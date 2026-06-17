@@ -1,0 +1,55 @@
+{% extends 'base.html' %}
+
+{% block title %}Earned Certificates | InterviewPrep{% endblock %}
+{% block page_header %}My Certificates{% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="col-12 mb-3">
+        <div class="glass-card-no-hover">
+            <h4 class="text-white mb-2"><i class="fas fa-certificate me-2 text-indigo"></i>Verifiable Technical Certifications</h4>
+            <p class="text-muted small mb-0">Whenever you achieve a score of 70% or higher in any technical domain quiz, you become eligible for a professional certificate of completion. You can download these as print-ready PDF credentials below.</p>
+        </div>
+    </div>
+</div>
+
+<div class="row">
+    <div class="col-12">
+        <div class="glass-card-no-hover">
+            <div class="table-responsive">
+                <table class="table table-dark table-hover table-striped mb-0 align-middle small" style="background: transparent !important;">
+                    <thead>
+                        <tr class="border-color">
+                            <th class="text-muted py-3">Topic / Domain</th>
+                            <th class="text-muted py-3">Difficulty</th>
+                            <th class="text-muted py-3">Score Achieved</th>
+                            <th class="text-muted py-3">Evaluation Date</th>
+                            <th class="text-muted py-3 text-end">Action</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for attempt in attempts %}
+                        <tr class="border-color">
+                            <td class="text-white fw-bold py-3"><i class="fas fa-award text-warning me-2"></i>{{ attempt.domain }}</td>
+                            <td><span class="badge-custom badge-easy">{{ attempt.difficulty }}</span></td>
+                            <td class="text-success fw-bold font-monospace">{{ attempt.score }}%</td>
+                            <td class="text-muted">{{ attempt.completed_at|date:"M d, Y" }}</td>
+                            <td class="text-end py-3">
+                                <a href="{% url 'generate_certificate' attempt.id %}" class="btn btn-sm btn-primary-custom py-1.5 px-3"><i class="fas fa-download me-1.5"></i>Download PDF</a>
+                            </td>
+                        </tr>
+                        {% empty %}
+                        <tr>
+                            <td colspan="5" class="text-center py-5 text-muted">
+                                <i class="fas fa-ribbon fa-3x mb-3 text-muted"></i>
+                                <p class="mb-0">No certificates earned yet. Achieve 70% or more in a Technical Quiz to get certified!</p>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

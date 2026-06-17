@@ -1,0 +1,250 @@
+{% extends 'base.html' %}
+
+{% block title %}Coding: {{ question.title }} | InterviewPrep{% endblock %}
+{% block page_header %}Coding round Workspace{% endblock %}
+
+{% block content %}
+<div class="row">
+    <!-- Problem Description Column -->
+    <div class="col-lg-5 mb-4">
+        <div class="glass-card-no-hover h-100 d-flex flex-column justify-content-between">
+            <div>
+                <div class="d-flex justify-content-between align-items-center mb-3 pb-3 border-bottom border-color">
+                    <h3 class="text-white fw-bold mb-0">{{ question.title }}</h3>
+                    <span class="badge-custom {% if question.difficulty == 'Easy' %}badge-easy{% elif question.difficulty == 'Medium' %}badge-medium{% else %}badge-hard{% endif %}">{{ question.difficulty }}</span>
+                </div>
+                
+                <div class="mb-4">
+                    <h6 class="text-indigo fw-bold mb-2">Description</h6>
+                    <p class="text-muted small" style="line-height: 1.6;">{{ question.description }}</p>
+                </div>
+                
+                <div class="mb-4">
+                    <h6 class="text-indigo fw-bold mb-2">Input Format</h6>
+                    <p class="text-muted small">{{ question.input_format }}</p>
+                </div>
+                
+                <div class="mb-4">
+                    <h6 class="text-indigo fw-bold mb-2">Output Format</h6>
+                    <p class="text-muted small">{{ question.output_format }}</p>
+                </div>
+
+                <div class="row g-2 mb-3">
+                    <div class="col-md-6">
+                        <h6 class="text-white fw-bold mb-2 small">Sample Input</h6>
+                        <pre class="bg-dark text-muted p-2.5 rounded-3 border border-color small font-monospace" style="background: rgba(0,0,0,0.2) !important;">{{ question.sample_input }}</pre>
+                    </div>
+                    <div class="col-md-6">
+                        <h6 class="text-white fw-bold mb-2 small">Sample Output</h6>
+                        <pre class="bg-dark text-muted p-2.5 rounded-3 border border-color small font-monospace" style="background: rgba(0,0,0,0.2) !important;">{{ question.sample_output }}</pre>
+                    </div>
+                </div>
+            </div>
+            
+            <a href="{% url 'coding_home' %}" class="btn btn-secondary-custom w-100 py-2"><i class="fas fa-arrow-left me-2"></i>Back to Coding List</a>
+        </div>
+    </div>
+
+    <!-- Code Editor & Console Column -->
+    <div class="col-lg-7 mb-4">
+        <div class="d-flex flex-column gap-3 h-100">
+            <!-- IDE Editor -->
+            <div class="code-editor-container">
+                <div class="code-editor-header">
+                    <span class="text-muted small fw-semibold"><i class="fab fa-python text-warning me-1.5"></i>solution.py</span>
+                    <div class="d-flex gap-2">
+                        <button class="btn btn-sm btn-secondary-custom py-1.5 px-3" onclick="runCode()"><i class="fas fa-play me-1.5"></i>Run Code</button>
+                        <button class="btn btn-sm btn-primary-custom py-1.5 px-3" onclick="submitCode()"><i class="fas fa-paper-plane me-1.5"></i>Submit Solution</button>
+                    </div>
+                </div>
+                <textarea id="code-editor" class="editor-textarea" spellcheck="false">{{ boilerplate }}</textarea>
+            </div>
+
+            <!-- Stdin Input / Stdout Output Console -->
+            <div class="glass-card-no-hover flex-fill">
+                <ul class="nav nav-tabs border-color mb-3" id="consoleTab" role="tablist">
+                    <li class="nav-item" role="presentation">
+                        <button class="nav-link active bg-transparent border-0 text-muted px-3 py-1.5 small" id="output-tab" data-bs-toggle="tab" data-bs-target="#output-pane" type="button" role="tab">Output Console</button>
+                    </li>
+                    <li class="nav-item" role="presentation">
+                        <button class="nav-link bg-transparent border-0 text-muted px-3 py-1.5 small" id="input-tab" data-bs-toggle="tab" data-bs-target="#input-pane" type="button" role="tab">Custom Input (Stdin)</button>
+                    </li>
+                </ul>
+                
+                <div class="tab-content" id="consoleTabContent">
+                    <!-- Output Console -->
+                    <div class="tab-pane fade show active" id="output-pane" role="tabpanel">
+                        <div id="output-status" class="mb-2 d-none">
+                            <span class="badge bg-secondary font-monospace py-1.5 px-2.5" id="output-badge-status">Idle</span>
+                        </div>
+                        <pre class="bg-dark text-light p-3 rounded-3 border border-color font-monospace small" id="console-stdout" style="min-height: 120px; max-height: 200px; overflow-y: auto; background: #0c0f16 !important;">Code execution output will appear here...</pre>
+                    </div>
+                    
+                    <!-- Custom Input (Stdin) -->
+                    <div class="tab-pane fade" id="input-pane" role="tabpanel">
+                        <textarea id="console-stdin" class="form-control form-control-custom font-monospace small" rows="5" placeholder="Enter standard input data here...">{{ question.sample_input }}</textarea>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Submit Result Modal -->
+<div class="modal fade" id="submitResultModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content glass-card-no-hover p-4 border border-color">
+            <div class="text-center">
+                <div id="modal-status-icon" class="mb-3">
+                    <i class="fas fa-check-circle text-success fa-4x"></i>
+                </div>
+                <h4 class="text-white fw-bold mb-2" id="modal-status-title">Submission Success</h4>
+                <p class="text-muted small my-3" id="modal-status-message">All test cases passed successfully!</p>
+                
+                <div class="p-3 bg-secondary-subtle rounded-3 border border-color mb-4" style="background: rgba(255,255,255,0.01);">
+                    <div class="row text-center">
+                        <div class="col-6">
+                            <span class="text-muted small d-block">Test Cases Passed</span>
+                            <span class="fw-bold text-white fs-5" id="modal-passed-ratio">4 / 4</span>
+                        </div>
+                        <div class="col-6">
+                            <span class="text-muted small d-block">Marks Awarded</span>
+                            <span class="fw-bold text-white fs-5" id="modal-marks">100%</span>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="d-flex gap-2">
+                    <button class="btn btn-secondary-custom flex-fill" data-bs-dismiss="modal">Try Again</button>
+                    <a href="{% url 'coding_home' %}" class="btn btn-primary-custom flex-fill"><i class="fas fa-arrow-right me-1"></i>Next Problem</a>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    const questionId = {{ question.id }};
+
+    function getCookie(name) {
+        let cookieValue = null;
+        if (document.cookie && document.cookie !== '') {
+            const cookies = document.cookie.split(';');
+            for (let i = 0; i < cookies.length; i++) {
+                const cookie = cookies[i].trim();
+                if (cookie.substring(0, name.length + 1) === (name + '=')) {
+                    cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+                    break;
+                }
+            }
+        }
+        return cookieValue;
+    }
+
+    function runCode() {
+        const code = document.getElementById('code-editor').value;
+        const stdin = document.getElementById('console-stdin').value;
+        const stdoutConsole = document.getElementById('console-stdout');
+        const statusDiv = document.getElementById('output-status');
+        const statusBadge = document.getElementById('output-badge-status');
+
+        stdoutConsole.innerText = 'Running solution code...';
+        statusDiv.classList.remove('d-none');
+        statusBadge.className = 'badge bg-warning text-dark font-monospace py-1.5 px-2.5';
+        statusBadge.innerText = 'Executing';
+
+        // Open Console Tab
+        const outputTabTrigger = document.querySelector('#output-tab');
+        bootstrap.Tab.getInstance(outputTabTrigger).show();
+
+        const csrftoken = getCookie('csrftoken');
+
+        fetch(`/coding/run/${questionId}/`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRFToken': csrftoken
+            },
+            body: JSON.stringify({ code: code, custom_input: stdin })
+        })
+        .then(res => res.json())
+        .then(data => {
+            if (data.status === 'success') {
+                if (data.exit_code === 0) {
+                    statusBadge.className = 'badge bg-success font-monospace py-1.5 px-2.5';
+                    statusBadge.innerText = 'Success (0)';
+                    stdoutConsole.innerText = data.stdout || '(No output printed)';
+                } else {
+                    statusBadge.className = 'badge bg-danger font-monospace py-1.5 px-2.5';
+                    statusBadge.innerText = `Error (${data.exit_code})`;
+                    stdoutConsole.innerText = data.stderr || 'Execution failed.';
+                }
+            } else {
+                statusBadge.className = 'badge bg-danger font-monospace py-1.5 px-2.5';
+                statusBadge.innerText = 'API Error';
+                stdoutConsole.innerText = data.message;
+            }
+        })
+        .catch(err => {
+            statusBadge.className = 'badge bg-danger font-monospace py-1.5 px-2.5';
+            statusBadge.innerText = 'Connection Error';
+            stdoutConsole.innerText = 'Failed to connect to execution sandbox API.';
+        });
+    }
+
+    function submitCode() {
+        const code = document.getElementById('code-editor').value;
+        const csrftoken = getCookie('csrftoken');
+
+        fetch(`/coding/submit/${questionId}/`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRFToken': csrftoken
+            },
+            body: JSON.stringify({ code: code })
+        })
+        .then(res => res.json())
+        .then(data => {
+            if (data.status === 'success') {
+                const modal = new bootstrap.Modal(document.getElementById('submitResultModal'));
+                const iconDiv = document.getElementById('modal-status-icon');
+                const title = document.getElementById('modal-status-title');
+                const msg = document.getElementById('modal-status-message');
+                const ratio = document.getElementById('modal-passed-ratio');
+                const marks = document.getElementById('modal-marks');
+
+                ratio.innerText = `${data.passed} / ${data.total}`;
+                marks.innerText = `${data.marks}%`;
+
+                if (data.run_status === 'Passed') {
+                    iconDiv.innerHTML = '<i class="fas fa-check-circle text-success fa-4x"></i>';
+                    title.innerText = 'All Test Cases Passed';
+                    title.className = 'text-success fw-bold mb-2';
+                    msg.innerText = 'Excellent job! Your solution meets all specification guidelines.';
+                } else if (data.run_status === 'Compilation Error') {
+                    iconDiv.innerHTML = '<i class="fas fa-exclamation-triangle text-danger fa-4x"></i>';
+                    title.innerText = 'Compilation / Runtime Error';
+                    title.className = 'text-danger fw-bold mb-2';
+                    msg.innerText = data.error_message || 'The script failed during runtime compilation check.';
+                } else {
+                    iconDiv.innerHTML = '<i class="fas fa-times-circle text-warning fa-4x"></i>';
+                    title.innerText = 'Test Cases Failed';
+                    title.className = 'text-warning fw-bold mb-2';
+                    msg.innerText = data.error_message || 'Some hidden inputs yielded incorrect stdout responses.';
+                }
+
+                modal.show();
+            } else {
+                alert('Submission failed: ' + data.message);
+            }
+        })
+        .catch(err => {
+            console.error(err);
+            alert('Failed to contact submission API.');
+        });
+    }
+</script>
+{% endblock %}

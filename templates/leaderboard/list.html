@@ -1,0 +1,65 @@
+{% extends 'base.html' %}
+
+{% block title %}Leaderboard | InterviewPrep{% endblock %}
+{% block page_header %}Global Candidate Rankings{% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="col-12 mb-3">
+        <div class="glass-card-no-hover">
+            <h4 class="text-white mb-2"><i class="fas fa-trophy me-2 text-indigo"></i>Candidate Leaderboard</h4>
+            <p class="text-muted small mb-0">Ranks are updated automatically based on your training engagement. Points: <b>10 pts</b> per quiz completed, and <b>25 pts</b> for every coding challenge passed.</p>
+        </div>
+    </div>
+</div>
+
+<div class="row">
+    <div class="col-12">
+        <div class="glass-card-no-hover">
+            <div class="table-responsive">
+                <table class="table table-dark table-hover table-striped mb-0 align-middle small" style="background: transparent !important;">
+                    <thead>
+                        <tr class="border-color">
+                            <th class="text-muted py-3" style="width: 80px;">Rank</th>
+                            <th class="text-muted py-3">Candidate</th>
+                            <th class="text-muted py-3 text-center">Quizzes Taken</th>
+                            <th class="text-muted py-3 text-center">Avg Quiz Score</th>
+                            <th class="text-muted py-3 text-center">Coding Solved</th>
+                            <th class="text-muted py-3 text-end">Activity Points</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for rank in rankings %}
+                        <tr class="border-color">
+                            <td class="py-3">
+                                {% if rank.rank == 1 %}
+                                <span class="fs-5 text-warning" title="First Place"><i class="fas fa-trophy"></i></span>
+                                {% elif rank.rank == 2 %}
+                                <span class="fs-5 text-secondary" title="Second Place"><i class="fas fa-medal"></i></span>
+                                {% elif rank.rank == 3 %}
+                                <span class="fs-5 text-danger" title="Third Place"><i class="fas fa-award"></i></span>
+                                {% else %}
+                                <span class="font-monospace text-muted fw-bold ms-1.5">{{ rank.rank }}</span>
+                                {% endif %}
+                            </td>
+                            <td class="text-white fw-bold">{{ rank.name }}</td>
+                            <td class="text-center font-monospace text-muted">{{ rank.total_quizzes }}</td>
+                            <td class="text-center font-monospace {% if rank.avg_score >= 70 %}text-success{% else %}text-warning{% endif %}">{{ rank.avg_score }}%</td>
+                            <td class="text-center font-monospace text-muted">{{ rank.total_solved }}</td>
+                            <td class="text-end text-indigo fw-bold py-3 font-monospace">{{ rank.activity_points }} pts</td>
+                        </tr>
+                        {% empty %}
+                        <tr>
+                            <td colspan="6" class="text-center py-5 text-muted">
+                                <i class="fas fa-users-slash fa-3x mb-3 text-muted"></i>
+                                <p class="mb-0">No active candidates ranked yet. Solve challenges to claim first place!</p>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

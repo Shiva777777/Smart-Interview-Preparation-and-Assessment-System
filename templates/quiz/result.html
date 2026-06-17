@@ -1,0 +1,140 @@
+{% extends 'base.html' %}
+
+{% block title %}Quiz Evaluation Report | InterviewPrep{% endblock %}
+{% block page_header %}Quiz Evaluation Report{% endblock %}
+
+{% block content %}
+<div class="row">
+    <!-- Score Card Widget -->
+    <div class="col-lg-6 mb-4">
+        <div class="glass-card-no-hover h-100 d-flex flex-column justify-content-between">
+            <div>
+                <h4 class="mb-3 text-white"><i class="fas fa-check-double text-success me-2"></i>Performance Summary</h4>
+                <div class="d-flex align-items-center gap-4 my-4">
+                    <div class="bg-secondary-subtle border border-color rounded-circle d-flex flex-column align-items-center justify-content-center" style="width: 120px; height: 120px; background: rgba(255,255,255,0.02);">
+                        <span class="display-6 fw-bold text-white mb-0">{{ attempt.score }}%</span>
+                        <span class="text-muted small">Score</span>
+                    </div>
+                    <div>
+                        <div class="mb-2"><span class="text-muted small">Domain:</span> <span class="text-white fw-semibold ms-1">{{ attempt.domain }}</span></div>
+                        <div class="mb-2"><span class="text-muted small">Difficulty:</span> <span class="text-white fw-semibold ms-1">{{ attempt.difficulty }}</span></div>
+                        <div class="mb-2"><span class="text-muted small">Status:</span> 
+                            {% if attempt.score >= 70 %}
+                            <span class="badge-custom badge-easy ms-1">Passed (Eligible)</span>
+                            {% else %}
+                            <span class="badge-custom badge-hard ms-1">Failed (Min 70%)</span>
+                            {% endif %}
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="d-flex gap-2 border-top border-color pt-3 mt-2">
+                <a href="/quiz/" class="btn btn-sm btn-primary-custom flex-fill py-2.5"><i class="fas fa-rotate me-1"></i>Try Another Quiz</a>
+                {% if is_eligible_for_cert %}
+                <a href="/certificates/generate/{{ attempt.id }}/" class="btn btn-sm btn-outline-success border-success text-success flex-fill py-2.5" target="_blank"><i class="fas fa-certificate me-1"></i>Download Certificate</a>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+
+    <!-- Compliancy Monitor (Cheat logs) -->
+    <div class="col-lg-6 mb-4">
+        <div class="glass-card-no-hover h-100">
+            <h4 class="mb-3 text-white"><i class="fas fa-shield-halved text-danger me-2"></i>Suspicious Activity Report</h4>
+            <p class="text-muted small">Integrity assessment report compiled from visibility and window focus listeners.</p>
+            
+            <div class="d-flex flex-column gap-3 mt-4">
+                <div class="d-flex justify-content-between align-items-center py-2 border-bottom border-color">
+                    <span class="small text-muted"><i class="fas fa-exchange-alt me-2 text-warning"></i>Tab Switches</span>
+                    <span class="fw-bold {% if attempt.tab_switches > 0 %}text-warning{% else %}text-success{% endif %}">{{ attempt.tab_switches }}</span>
+                </div>
+                <div class="d-flex justify-content-between align-items-center py-2 border-bottom border-color">
+                    <span class="small text-muted"><i class="fas fa-window-minimize me-2 text-danger"></i>Window Minimizes</span>
+                    <span class="fw-bold {% if attempt.window_minimizes > 0 %}text-danger{% else %}text-success{% endif %}">{{ attempt.window_minimizes }}</span>
+                </div>
+                <div class="d-flex justify-content-between align-items-center py-2 border-bottom border-color">
+                    <span class="small text-muted"><i class="fas fa-ban me-2 text-danger"></i>Focus Lost Count</span>
+                    <span class="fw-bold {% if attempt.focus_lost > 0 %}text-danger{% else %}text-success{% endif %}">{{ attempt.focus_lost }}</span>
+                </div>
+                <div class="mt-2">
+                    {% if attempt.tab_switches == 0 and attempt.window_minimizes == 0 and attempt.focus_lost == 0 %}
+                    <span class="text-success small fw-semibold"><i class="fas fa-check-circle me-1"></i>Excellent! Full compliance verified. No anomalies detected.</span>
+                    {% else %}
+                    <span class="text-warning small fw-semibold"><i class="fas fa-exclamation-triangle me-1"></i>Warning: System detected actions losing page focus. Integrity score lowered.</span>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Detailed Question Review -->
+<div class="row">
+    <div class="col-12">
+        <h4 class="mb-4 text-white mt-2"><i class="fas fa-list-ol me-2 text-indigo"></i>Review Questions</h4>
+        
+        <div class="d-flex flex-column gap-3">
+            {% for ans in answers %}
+            <div class="glass-card-no-hover">
+                <div class="d-flex justify-content-between align-items-start gap-3 mb-3">
+                    <h5 class="text-white fw-bold mb-0" style="font-size: 1.05rem;">Q{{ forloop.counter }}: {{ ans.question.text }}</h5>
+                    {% if ans.is_correct %}
+                    <span class="badge-custom badge-easy text-nowrap"><i class="fas fa-check me-1"></i>Correct</span>
+                    {% else %}
+                    <span class="badge-custom badge-hard text-nowrap"><i class="fas fa-times me-1"></i>Incorrect</span>
+                    {% endif %}
+                </div>
+
+                <div class="row row-cols-md-2 g-2 mb-3">
+                    <div class="col small text-muted">A: {{ ans.question.option_a }}</div>
+                    <div class="col small text-muted">B: {{ ans.question.option_b }}</div>
+                    <div class="col small text-muted">C: {{ ans.question.option_c }}</div>
+                    <div class="col small text-muted">D: {{ ans.question.option_d }}</div>
+                </div>
+
+                <div class="d-flex gap-4 small pt-2 border-top border-color" style="font-size: 0.85rem;">
+                    <div><span class="text-muted">Selected Option:</span> <span class="fw-bold {% if ans.is_correct %}text-success{% else %}text-danger{% endif %}">{{ ans.selected_option|default:"None (Timed Out)" }}</span></div>
+                    <div><span class="text-muted">Correct Option:</span> <span class="fw-bold text-success">{{ ans.question.correct_option }}</span></div>
+                </div>
+
+                <!-- Explanation Toggle section -->
+                {% if not ans.is_correct %}
+                <div class="mt-3">
+                    <button class="btn btn-sm btn-outline-secondary py-1.5 px-3" type="button" data-bs-toggle="collapse" data-bs-target="#explain_{{ ans.id }}">
+                        <i class="fas fa-question-circle me-1"></i>Do you want an explanation?
+                    </button>
+                    <div class="collapse mt-3" id="explain_{{ ans.id }}">
+                        <div class="p-3 bg-secondary-subtle rounded-3 border border-color small" style="background: rgba(255,255,255,0.01);">
+                            <h6 class="text-indigo fw-bold mb-2"><i class="fas fa-info-circle me-1"></i>Concept Explanation:</h6>
+                            <p class="text-muted mb-3">{{ ans.question.explanation }}</p>
+                            
+                            {% if ans.question.follow_up_question %}
+                            <div class="border-top border-color pt-3 mt-3">
+                                <h6 class="text-warning fw-bold mb-2"><i class="fas fa-forward me-1"></i>AI Follow-up Question:</h6>
+                                <p class="text-white fw-bold mb-2">{{ ans.question.follow_up_question }}</p>
+                                <p class="text-muted mb-0"><span class="text-success fw-semibold">Answer Note:</span> {{ ans.question.follow_up_explanation }}</p>
+                            </div>
+                            {% endif %}
+                        </div>
+                    </div>
+                </div>
+                {% else %}
+                <div class="mt-3">
+                    <button class="btn btn-sm btn-outline-secondary py-1.5 px-3" type="button" data-bs-toggle="collapse" data-bs-target="#explain_{{ ans.id }}">
+                        <i class="fas fa-info-circle me-1"></i>View Concept details
+                    </button>
+                    <div class="collapse mt-3" id="explain_{{ ans.id }}">
+                        <div class="p-3 bg-secondary-subtle rounded-3 border border-color small" style="background: rgba(255,255,255,0.01);">
+                            <h6 class="text-indigo fw-bold mb-2"><i class="fas fa-info-circle me-1"></i>Concept Explanation:</h6>
+                            <p class="text-muted mb-0">{{ ans.question.explanation }}</p>
+                        </div>
+                    </div>
+                </div>
+                {% endif %}
+            </div>
+            {% endfor %}
+        </div>
+    </div>
+</div>
+{% endblock %}

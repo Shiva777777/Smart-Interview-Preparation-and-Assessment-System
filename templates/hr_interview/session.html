@@ -1,0 +1,358 @@
+{% extends 'base.html' %}
+
+{% block title %}HR Session: {{ question.text|truncatewords:5 }} | InterviewPrep{% endblock %}
+{% block page_header %}HR Interview Session{% endblock %}
+
+{% block extra_css %}
+<style>
+    .recording-pulse {
+        width: 14px;
+        height: 14px;
+        background: var(--danger-color);
+        border-radius: 50%;
+        display: inline-block;
+        animation: pulse 1.5s infinite;
+    }
+    @keyframes pulse {
+        0% { transform: scale(0.9); box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.7); }
+        70% { transform: scale(1.1); box-shadow: 0 0 0 10px rgba(239, 68, 68, 0); }
+        100% { transform: scale(0.9); box-shadow: 0 0 0 0 rgba(239, 68, 68, 0); }
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="row">
+    <!-- Left Column: Question Details & Audio Playback -->
+    <div class="col-lg-5 mb-4">
+        <div class="glass-card-no-hover h-100 d-flex flex-column justify-content-between">
+            <div>
+                <h4 class="text-white fw-bold mb-3">Interview Question</h4>
+                <div class="bg-secondary-subtle p-3 rounded-4 border border-color mb-4" style="background: rgba(255,255,255,0.015);">
+                    <h5 class="text-white fw-bold mb-3" style="line-height: 1.5;">"{{ question.text }}"</h5>
+                    
+                    <!-- Audio playback element -->
+                    <audio id="tts-audio" src="/hr/tts/{{ question.id }}/" preload="auto"></audio>
+                    <button class="btn btn-primary-custom py-2 px-3 btn-sm" id="play-tts-btn" onclick="playQuestionAudio()">
+                        <i class="fas fa-volume-up me-1.5"></i>Listen to Question
+                    </button>
+                </div>
+
+                <div class="mt-4">
+                    <h6 class="text-indigo fw-bold mb-2"><i class="fas fa-lightbulb me-1.5"></i>Best Practices Guidelines</h6>
+                    <ul class="text-muted small ps-3 mb-0" style="line-height: 1.7;">
+                        <li>Listen to the question carefully, noting target criteria.</li>
+                        <li>Address the core question directly in the first 2 sentences.</li>
+                        <li>Support your claims with a concrete example (use the STAR method).</li>
+                        <li>Avoid industry buzzwords; speak professionally and naturally.</li>
+                    </ul>
+                </div>
+            </div>
+            
+            <a href="{% url 'hr_home' %}" class="btn btn-secondary-custom w-100 py-2.5"><i class="fas fa-arrow-left me-2"></i>Back to HR List</a>
+        </div>
+    </div>
+
+    <!-- Right Column: Answer workspace & Feedback panel -->
+    <div class="col-lg-7 mb-4">
+        <div class="d-flex flex-column gap-3 h-100">
+            <!-- Answer Form Card -->
+            <div class="glass-card-no-hover">
+                <div class="d-flex justify-content-between align-items-center mb-3">
+                    <h4 class="text-white fw-bold mb-0">Your Response Workspace</h4>
+                    <div id="recording-status" class="d-none align-items-center gap-2">
+                        <span class="recording-pulse"></span>
+                        <span class="small text-danger fw-semibold">Recording Voice</span>
+                    </div>
+                </div>
+
+                <ul class="nav nav-tabs border-color mb-3" id="answerTab" role="tablist">
+                    <li class="nav-item">
+                        <button class="nav-link active bg-transparent border-0 text-muted px-3 py-1.5 small" id="type-tab" data-bs-toggle="tab" data-bs-target="#type-pane" type="button" role="tab"><i class="fas fa-keyboard me-1.5"></i>Type Answer</button>
+                    </li>
+                    <li class="nav-item">
+                        <button class="nav-link bg-transparent border-0 text-muted px-3 py-1.5 small" id="voice-tab" data-bs-toggle="tab" data-bs-target="#voice-pane" type="button" role="tab"><i class="fas fa-microphone me-1.5"></i>Speak Answer</button>
+                    </li>
+                </ul>
+
+                <div class="tab-content" id="answerTabContent">
+                    <!-- Typing Pane -->
+                    <div class="tab-pane fade show active" id="type-pane" role="tabpanel">
+                        <textarea id="answer-text" class="form-control form-control-custom font-monospace small" rows="8" placeholder="Type or transcribe your response here (minimum 25 words recommended)...">{{ attempt.user_answer|default:"" }}</textarea>
+                    </div>
+
+                    <!-- Voice Recording Pane -->
+                    <div class="tab-pane fade" id="voice-pane" role="tabpanel">
+                        <div class="p-4 border border-color border-dashed rounded-4 text-center mb-3" style="border-style: dashed !important; background: rgba(255,255,255,0.01);">
+                            <div class="d-flex justify-content-center gap-2 mb-3">
+                                <button class="btn btn-danger py-2 px-3 btn-sm" id="start-rec-btn" onclick="startVoiceRecording()"><i class="fas fa-circle me-1.5"></i>Start Recording</button>
+                                <button class="btn btn-secondary-custom py-2 px-3 btn-sm" id="stop-rec-btn" onclick="stopVoiceRecording()" disabled><i class="fas fa-stop me-1.5"></i>Stop & Transcribe</button>
+                            </div>
+                            <p class="text-muted small mb-0" id="voice-helper-msg">Click start and allow microphone access to dictate your answer.</p>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="d-flex justify-content-end pt-3 mt-3 border-top border-color">
+                    <button class="btn btn-primary-custom px-4 py-2" id="submit-btn" onclick="evaluateAnswer()"><i class="fas fa-magic me-1.5"></i>Evaluate Answer</button>
+                </div>
+            </div>
+
+            <!-- Feedback Panel (Hidden initially, shown after submit/evaluate) -->
+            <div class="glass-card-no-hover d-none" id="feedback-panel">
+                <h4 class="text-white fw-bold mb-3"><i class="fas fa-chart-line text-indigo me-2"></i>AI Performance Evaluation</h4>
+                
+                <div class="mb-4">
+                    <label class="form-label form-label-custom d-flex justify-content-between mb-2">
+                        <span>Answer Quality Score</span>
+                        <span class="fw-bold" id="feedback-score-display">0%</span>
+                    </label>
+                    <div class="progress" style="height: 8px; background: rgba(255,255,255,0.05);">
+                        <div class="progress-bar bg-success" id="feedback-progress-bar" role="progressbar" style="width: 0%;"></div>
+                    </div>
+                </div>
+
+                <div class="p-3 bg-secondary-subtle rounded-3 border border-color small" style="background: rgba(255,255,255,0.01);">
+                    <h6 class="text-indigo fw-bold mb-2"><i class="fas fa-list-check me-1.5"></i>Feedback points:</h6>
+                    <ul class="text-muted ps-3 mb-0 d-flex flex-column gap-2" id="feedback-bullets-list">
+                        <!-- Javascript populates -->
+                    </ul>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    const questionId = {{ question.id }};
+    let mediaRecorder = null;
+    let audioChunks = [];
+    let recognition = null; // Browser recognition fallback
+
+    // Auto play question on load
+    window.addEventListener('load', () => {
+        setTimeout(() => {
+            playQuestionAudio();
+        }, 800);
+    });
+
+    function playQuestionAudio() {
+        const audio = document.getElementById('tts-audio');
+        const btn = document.getElementById('play-tts-btn');
+        btn.disabled = true;
+        btn.innerHTML = '<i class="fas fa-spinner fa-spin me-1.5"></i>Playing...';
+        
+        audio.play()
+            .then(() => {
+                audio.onended = () => {
+                    btn.disabled = false;
+                    btn.innerHTML = '<i class="fas fa-volume-up me-1.5"></i>Listen to Question';
+                };
+            })
+            .catch(err => {
+                btn.disabled = false;
+                btn.innerHTML = '<i class="fas fa-volume-up me-1.5"></i>Listen to Question';
+                console.error("Audio playback error: ", err);
+            });
+    }
+
+    // Speech Recognition integration
+    function startVoiceRecording() {
+        audioChunks = [];
+        const statusDiv = document.getElementById('recording-status');
+        statusDiv.className = 'd-flex align-items-center gap-2';
+
+        document.getElementById('start-rec-btn').disabled = true;
+        document.getElementById('stop-rec-btn').disabled = false;
+        document.getElementById('voice-helper-msg').innerText = "Recording... Speak clearly into your microphone.";
+
+        // Use Browser SpeechRecognition API for instant feedback if supported
+        const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+        if (SpeechRecognition) {
+            recognition = new SpeechRecognition();
+            recognition.continuous = true;
+            recognition.interimResults = false;
+            recognition.lang = 'en-US';
+
+            recognition.onresult = (event) => {
+                const transcript = event.results[event.results.length - 1][0].transcript;
+                const textarea = document.getElementById('answer-text');
+                textarea.value = (textarea.value + ' ' + transcript).trim();
+            };
+
+            recognition.onerror = (e) => {
+                console.error("Browser speech error: ", e);
+            };
+
+            recognition.start();
+        }
+
+        // Standard Audio Recording via MediaRecorder (for backend upload / safety)
+        navigator.mediaDevices.getUserMedia({ audio: true })
+            .then(stream => {
+                mediaRecorder = new MediaRecorder(stream);
+                mediaRecorder.ondataavailable = (event) => {
+                    audioChunks.push(event.data);
+                };
+                mediaRecorder.start();
+            })
+            .catch(err => {
+                console.error("Microphone access error: ", err);
+                document.getElementById('voice-helper-msg').innerText = "Microphone access denied or unsupported.";
+            });
+    }
+
+    function stopVoiceRecording() {
+        const statusDiv = document.getElementById('recording-status');
+        statusDiv.className = 'd-none';
+
+        document.getElementById('start-rec-btn').disabled = false;
+        document.getElementById('stop-rec-btn').disabled = true;
+        document.getElementById('voice-helper-msg').innerText = "Transcribing voice recording...";
+
+        // Stop browser recognition
+        if (recognition) {
+            recognition.stop();
+        }
+
+        // Stop media recorder
+        if (mediaRecorder && mediaRecorder.state !== 'inactive') {
+            mediaRecorder.onstop = () => {
+                const audioBlob = new Blob(audioChunks, { type: 'audio/wav' });
+                uploadAudioFile(audioBlob);
+            };
+            mediaRecorder.stop();
+            // Stop media stream tracks to release microphone
+            mediaRecorder.stream.getTracks().forEach(track => track.stop());
+        } else {
+            // Switch tab back
+            const typeTabTrigger = document.querySelector('#type-tab');
+            bootstrap.Tab.getInstance(typeTabTrigger).show();
+            document.getElementById('voice-helper-msg').innerText = "Dictation processed. Review your text in the Type pane.";
+        }
+    }
+
+    function getCookie(name) {
+        let cookieValue = null;
+        if (document.cookie && document.cookie !== '') {
+            const cookies = document.cookie.split(';');
+            for (let i = 0; i < cookies.length; i++) {
+                const cookie = cookies[i].trim();
+                if (cookie.substring(0, name.length + 1) === (name + '=')) {
+                    cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+                    break;
+                }
+            }
+        }
+        return cookieValue;
+    }
+
+    function uploadAudioFile(blob) {
+        const formData = new FormData();
+        formData.append('audio_data', blob, 'response.wav');
+        const csrftoken = getCookie('csrftoken');
+
+        fetch('/hr/stt/', {
+            method: 'POST',
+            headers: {
+                'X-CSRFToken': csrftoken
+            },
+            body: formData
+        })
+        .then(res => res.json())
+        .then(data => {
+            if (data.status === 'success') {
+                const textarea = document.getElementById('answer-text');
+                textarea.value = (textarea.value + ' ' + data.transcript).trim();
+                document.getElementById('voice-helper-msg').innerText = "Transcription complete. Review response below.";
+            } else {
+                document.getElementById('voice-helper-msg').innerText = "Dictation processing complete. Review text in Type pane.";
+                console.warn("Backend transcription warning: ", data.message);
+            }
+            
+            // Highlight type pane
+            const typeTabTrigger = document.querySelector('#type-tab');
+            bootstrap.Tab.getInstance(typeTabTrigger).show();
+        })
+        .catch(err => {
+            console.error("Audio upload error: ", err);
+            document.getElementById('voice-helper-msg').innerText = "Dictation processing complete. Review text in Type pane.";
+            const typeTabTrigger = document.querySelector('#type-tab');
+            bootstrap.Tab.getInstance(typeTabTrigger).show();
+        });
+    }
+
+    function evaluateAnswer() {
+        const answer = document.getElementById('answer-text').value.trim();
+        if (!answer) {
+            alert("Please type or record an answer before submitting.");
+            return;
+        }
+
+        const submitBtn = document.getElementById('submit-btn');
+        submitBtn.disabled = true;
+        submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin me-1.5"></i>Evaluating...';
+
+        const csrftoken = getCookie('csrftoken');
+
+        fetch(`/hr/evaluate/${questionId}/`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRFToken': csrftoken
+            },
+            body: JSON.stringify({ answer: answer })
+        })
+        .then(res => res.json())
+        .then(data => {
+            submitBtn.disabled = false;
+            submitBtn.innerHTML = '<i class="fas fa-magic me-1.5"></i>Evaluate Answer';
+
+            if (data.status === 'success') {
+                // Populate feedback panel
+                const panel = document.getElementById('feedback-panel');
+                panel.classList.remove('d-none');
+
+                document.getElementById('feedback-score-display').innerText = `${data.score}%`;
+                const progress = document.getElementById('feedback-progress-bar');
+                progress.style.width = `${data.score}%`;
+
+                // Set color based on score
+                if (data.score >= 70) {
+                    progress.className = 'progress-bar bg-success';
+                } else if (data.score >= 45) {
+                    progress.className = 'progress-bar bg-warning';
+                } else {
+                    progress.className = 'progress-bar bg-danger';
+                }
+
+                // Populate bullet items
+                const bulletsList = document.getElementById('feedback-bullets-list');
+                bulletsList.innerHTML = '';
+                
+                const bulletLines = data.feedback.split('\n');
+                bulletLines.forEach(line => {
+                    if (line.trim()) {
+                        const li = document.createElement('li');
+                        li.innerHTML = line;
+                        bulletsList.appendChild(li);
+                    }
+                });
+
+                // Scroll to feedback panel
+                panel.scrollIntoView({ behavior: 'smooth' });
+            } else {
+                alert("Evaluation error: " + data.message);
+            }
+        })
+        .catch(err => {
+            submitBtn.disabled = false;
+            submitBtn.innerHTML = '<i class="fas fa-magic me-1.5"></i>Evaluate Answer';
+            console.error(err);
+            alert("Failed to submit answer for evaluation.");
+        });
+    }
+</script>
+{% endblock %}

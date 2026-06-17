@@ -1,0 +1,172 @@
+{% extends 'base.html' %}
+
+{% block title %}Career Roadmap | InterviewPrep{% endblock %}
+{% block page_header %}Roadmap: {{ career_goal }}{% endblock %}
+
+{% block extra_css %}
+<style>
+    .timeline-item {
+        position: relative;
+        padding-left: 3rem;
+        margin-bottom: 2rem;
+    }
+    .timeline-item::before {
+        content: '';
+        position: absolute;
+        left: 14px;
+        top: 0;
+        bottom: -2rem;
+        width: 2px;
+        background: var(--border-color);
+        z-index: 1;
+    }
+    .timeline-item:last-child::before {
+        display: none;
+    }
+    .timeline-badge {
+        position: absolute;
+        left: 0;
+        top: 0;
+        width: 30px;
+        height: 30px;
+        border-radius: 50%;
+        background: var(--bg-tertiary);
+        border: 2px solid var(--border-color);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-weight: 700;
+        font-size: 0.85rem;
+        color: var(--text-secondary);
+        z-index: 2;
+        transition: all 0.3s ease;
+    }
+    .timeline-item.completed .timeline-badge {
+        background: var(--success-color);
+        border-color: var(--success-color);
+        color: white;
+        box-shadow: 0 0 10px rgba(16, 185, 129, 0.4);
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="row">
+    <!-- Header Summary -->
+    <div class="col-12 mb-4">
+        <div class="glass-card-no-hover">
+            <div class="d-flex justify-content-between align-items-center mb-3">
+                <h4 class="text-white mb-0"><i class="fas fa-route me-2 text-indigo"></i>{{ career_goal }} Roadmap Progress</h4>
+                <span class="badge bg-secondary py-2 px-3 border border-dark rounded-pill" id="completion-ratio-badge">0 of 4 Completed</span>
+            </div>
+            
+            <div class="progress mt-3" style="height: 10px; background: rgba(255,255,255,0.05); border-radius: 10px;">
+                <div class="progress-bar progress-bar-striped progress-bar-animated bg-success" id="roadmap-progressbar" role="progressbar" style="width: 0%;"></div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="row">
+    <div class="col-lg-9">
+        <div class="glass-card-no-hover">
+            <!-- Timeline Milestones -->
+            <div class="timeline mt-3">
+                {% for mile in milestones %}
+                <div class="timeline-item {% if mile.completed %}completed{% endif %}" id="timeline_item_{{ mile.id }}">
+                    <div class="timeline-badge">{{ mile.month }}</div>
+                    
+                    <div class="p-3 bg-secondary-subtle rounded-4 border border-color d-flex justify-content-between align-items-start gap-3" style="background: rgba(255,255,255,0.01);">
+                        <div>
+                            <h5 class="text-white fw-bold mb-2">Month {{ mile.month }}: {{ mile.topic }}</h5>
+                            <p class="text-muted small mb-0" style="line-height: 1.6;">{{ mile.description }}</p>
+                        </div>
+                        
+                        <div class="pt-1">
+                            <div class="form-check form-switch">
+                                <input class="form-check-input bg-dark border-secondary cursor-pointer" type="checkbox" role="switch" style="width: 2.2em; height: 1.2em; cursor: pointer;" id="switch_{{ mile.id }}" {% if mile.completed %}checked{% endif %} onchange="toggleMilestone({{ mile.id }})">
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                {% endfor %}
+            </div>
+        </div>
+    </div>
+    
+    <div class="col-lg-3">
+        <div class="glass-card h-100">
+            <h5 class="text-white fw-bold mb-3"><i class="fas fa-info-circle me-1.5 text-indigo"></i>Roadmap Tips</h5>
+            <p class="text-muted small mb-3">Roadmaps are designed on a monthly milestone layout. Check off topics once you finish the learning guides, practice code challenges, and pass corresponding subject quizzes.</p>
+            <p class="text-muted small mb-0">Return to your dashboard or recommendations panel to find relevant YouTube study links and reference PDFs.</p>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    document.addEventListener('DOMContentLoaded', () => {
+        updateProgress();
+    });
+
+    function getCookie(name) {
+        let cookieValue = null;
+        if (document.cookie && document.cookie !== '') {
+            const cookies = document.cookie.split(';');
+            for (let i = 0; i < cookies.length; i++) {
+                const cookie = cookies[i].trim();
+                if (cookie.substring(0, name.length + 1) === (name + '=')) {
+                    cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+                    break;
+                }
+            }
+        }
+        return cookieValue;
+    }
+
+    function toggleMilestone(milestoneId) {
+        const csrftoken = getCookie('csrftoken');
+        const itemDiv = document.getElementById(`timeline_item_${milestoneId}`);
+
+        fetch(`/roadmap/toggle/${milestoneId}/`, {
+            method: 'POST',
+            headers: {
+                'X-CSRFToken': csrftoken
+            }
+        })
+        .then(res => res.json())
+        .then(data => {
+            if (data.status === 'success') {
+                if (data.completed) {
+                    itemDiv.classList.add('completed');
+                } else {
+                    itemDiv.classList.remove('completed');
+                }
+                updateProgress();
+            } else {
+                alert("Failed to toggle milestone: " + data.message);
+                // Revert checkbox
+                const chk = document.getElementById(`switch_${milestoneId}`);
+                chk.checked = !chk.checked;
+            }
+        })
+        .catch(err => {
+            console.error(err);
+            alert("Failed to connect to API.");
+            const chk = document.getElementById(`switch_${milestoneId}`);
+            chk.checked = !chk.checked;
+        });
+    }
+
+    function updateProgress() {
+        const total = document.querySelectorAll('.timeline-item').length;
+        const completed = document.querySelectorAll('.timeline-item.completed').length;
+        
+        const percent = total > 0 ? Math.round((completed / total) * 100) : 0;
+        
+        document.getElementById('roadmap-progressbar').style.width = `${percent}%`;
+        document.getElementById('completion-ratio-badge').innerText = `${completed} of ${total} Completed (${percent}%)`;
+    }
+</script>
+{% endblock %}

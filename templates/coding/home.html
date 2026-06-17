@@ -1,0 +1,52 @@
+{% extends 'base.html' %}
+
+{% block title %}Coding Round | InterviewPrep{% endblock %}
+{% block page_header %}Coding Round Challenges{% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="col-12 mb-3">
+        <div class="glass-card-no-hover">
+            <h4 class="text-white mb-2"><i class="fas fa-code me-2 text-indigo"></i>Programming Round</h4>
+            <p class="text-muted small mb-0">Solve technical coding problems using Python. Submit code that reads from standard input and prints the expected results to standard output.</p>
+        </div>
+    </div>
+</div>
+
+<div class="row">
+    {% for q in questions %}
+    <div class="col-md-6 mb-4">
+        <div class="glass-card h-100 d-flex flex-column justify-content-between">
+            <div>
+                <div class="d-flex justify-content-between align-items-center mb-3">
+                    <h5 class="text-white fw-bold mb-0">{{ q.title }}</h5>
+                    
+                    <div>
+                        {% if q.difficulty == 'Easy' %}
+                        <span class="badge-custom badge-easy">{{ q.difficulty }}</span>
+                        {% elif q.difficulty == 'Medium' %}
+                        <span class="badge-custom badge-medium">{{ q.difficulty }}</span>
+                        {% else %}
+                        <span class="badge-custom badge-hard">{{ q.difficulty }}</span>
+                        {% endif %}
+                        
+                        {% if q.id in completed_q_ids %}
+                        <span class="badge bg-success ms-2 rounded-pill"><i class="fas fa-check"></i> Solved</span>
+                        {% endif %}
+                    </div>
+                </div>
+                <p class="text-muted small line-clamp-3 mb-4">{{ q.description }}</p>
+            </div>
+            
+            <div class="d-flex gap-3 pt-3 border-top border-color">
+                <a href="{% url 'coding_session' q.id %}" class="btn btn-sm btn-primary-custom w-100 py-2.5"><i class="fas fa-keyboard me-2"></i>Solve Challenge</a>
+            </div>
+        </div>
+    </div>
+    {% empty %}
+    <div class="col-12 text-center py-5">
+        <div class="text-muted">No coding challenges available.</div>
+    </div>
+    {% endfor %}
+</div>
+{% endblock %}

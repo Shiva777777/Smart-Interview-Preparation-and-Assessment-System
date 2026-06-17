@@ -1,0 +1,246 @@
+{% extends 'base.html' %}
+
+{% block title %}Dashboard | InterviewPrep{% endblock %}
+{% block page_header %}Performance Dashboard{% endblock %}
+
+{% block content %}
+<!-- KPI Score Overview Cards -->
+<div class="row">
+    <div class="col-md-3 col-sm-6 mb-4">
+        <div class="glass-card-no-hover h-100 d-flex flex-column justify-content-between p-4">
+            <div>
+                <span class="text-muted small fw-bold uppercase">Average Score</span>
+                <h3 class="display-6 fw-bold mt-2 mb-0 text-white">{{ avg_score }}%</h3>
+            </div>
+            <div class="progress mt-3" style="height: 6px; background: rgba(255,255,255,0.05);">
+                <div class="progress-bar bg-primary" role="progressbar" style="width: {{ avg_score }}%;" aria-valuenow="{{ avg_score }}" aria-valuemin="0" aria-valuemax="100"></div>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3 col-sm-6 mb-4">
+        <div class="glass-card-no-hover h-100 d-flex flex-column justify-content-between p-4">
+            <div>
+                <span class="text-muted small fw-bold uppercase">Highest Score</span>
+                <h3 class="display-6 fw-bold mt-2 mb-0" style="color: var(--success-color);">{{ max_score }}%</h3>
+            </div>
+            <div class="progress mt-3" style="height: 6px; background: rgba(255,255,255,0.05);">
+                <div class="progress-bar bg-success" role="progressbar" style="width: {{ max_score }}%;" aria-valuenow="{{ max_score }}" aria-valuemin="0" aria-valuemax="100"></div>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3 col-sm-6 mb-4">
+        <div class="glass-card-no-hover h-100 d-flex flex-column justify-content-between p-4">
+            <div>
+                <span class="text-muted small fw-bold uppercase">Total Quizzes</span>
+                <h3 class="display-6 fw-bold mt-2 mb-0" style="color: var(--warning-color);">{{ total_quizzes }}</h3>
+            </div>
+            <div class="mt-3 text-muted small"><i class="fas fa-check-circle me-1 text-warning"></i>Completed sessions</div>
+        </div>
+    </div>
+    <div class="col-md-3 col-sm-6 mb-4">
+        <div class="glass-card-no-hover h-100 d-flex flex-column justify-content-between p-4">
+            <div>
+                <span class="text-muted small fw-bold uppercase">Resume Status</span>
+                <h3 class="h3 fw-bold mt-2 mb-0 text-white">{{ resume_status }}</h3>
+            </div>
+            <div class="mt-3 text-muted small">
+                {% if resume_status == 'Uploaded' %}
+                <span class="text-success"><i class="fas fa-check-double me-1"></i>Skills Analyzed</span>
+                {% else %}
+                <a href="/resume/upload/" class="text-indigo text-decoration-none"><i class="fas fa-upload me-1"></i>Upload Now</a>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Bento Grid Layout: Roadmaps and Skills -->
+<div class="row">
+    <div class="col-lg-6 mb-4">
+        <div class="glass-card h-100">
+            <div class="d-flex justify-content-between align-items-center mb-3">
+                <h4 class="mb-0 text-white"><i class="fas fa-map-signs me-2 text-indigo"></i>Career Roadmap</h4>
+                <span class="badge-custom badge-medium">{{ career_goal }}</span>
+            </div>
+            <p class="text-muted small">Track your learning progression toward your selected career track.</p>
+            {% if career_goal != 'Not Selected' %}
+            <div class="d-flex justify-content-between align-items-center mb-2 mt-4">
+                <span class="small fw-semibold text-white">Completion Progress</span>
+                <span class="small fw-semibold text-white">{{ roadmap_progress }}%</span>
+            </div>
+            <div class="progress mb-4" style="height: 10px; background: rgba(255,255,255,0.05); border-radius: 10px;">
+                <div class="progress-bar progress-bar-striped progress-bar-animated bg-indigo" role="progressbar" style="width: {{ roadmap_progress }}%; background-color: var(--accent-color);"></div>
+            </div>
+            <a href="/roadmap/" class="btn btn-sm btn-primary-custom w-100 py-2"><i class="fas fa-arrow-right me-1"></i>View Roadmaps & Milestones</a>
+            {% else %}
+            <div class="text-center py-4">
+                <p class="text-muted mb-3">Select a career path to generate your customized roadmap.</p>
+                <a href="/accounts/profile/" class="btn btn-sm btn-primary-custom"><i class="fas fa-user-edit me-1"></i>Set Career Goal</a>
+            </div>
+            {% endif %}
+        </div>
+    </div>
+    
+    <div class="col-lg-6 mb-4">
+        <div class="glass-card h-100">
+            <h4 class="mb-3 text-white"><i class="fas fa-file-invoice me-2 text-indigo"></i>Detected Skills</h4>
+            <p class="text-muted small mb-4">Skills parsed from your resume profile or set manually.</p>
+            <div class="d-flex flex-wrap gap-2 mb-4">
+                {% if detected_skills %}
+                    {% for skill in detected_skills %}
+                    <span class="badge bg-secondary py-2 px-3 border border-dark rounded-pill" style="font-size: 0.85rem;"><i class="fas fa-circle-notch me-1.5 text-indigo"></i>{{ skill }}</span>
+                    {% endfor %}
+                {% else %}
+                    <div class="text-center py-3 w-100">
+                        <span class="text-muted small d-block mb-3">No skills identified. Upload a resume to populate skills automatically.</span>
+                        <a href="/resume/upload/" class="btn btn-sm btn-secondary-custom"><i class="fas fa-upload me-1"></i>Upload Resume</a>
+                    </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Subject Strengths and Weaknesses -->
+<div class="row">
+    <div class="col-md-6 mb-4">
+        <div class="glass-card h-100">
+            <h5 class="text-success mb-3"><i class="fas fa-shield-halved me-2"></i>Strong Subjects (>= 70%)</h5>
+            <ul class="list-group list-group-flush bg-transparent">
+                {% for sub in strong_subjects %}
+                <li class="list-group-item bg-transparent text-white border-0 px-0 py-2 small d-flex align-items-center">
+                    <i class="fas fa-chevron-right me-2 text-success"></i> {{ sub }}
+                </li>
+                {% endfor %}
+            </ul>
+        </div>
+    </div>
+    <div class="col-md-6 mb-4">
+        <div class="glass-card h-100">
+            <h5 class="text-danger mb-3"><i class="fas fa-triangle-exclamation me-2"></i>Focus Subjects (< 50%)</h5>
+            <ul class="list-group list-group-flush bg-transparent">
+                {% for sub in weak_subjects %}
+                <li class="list-group-item bg-transparent text-white border-0 px-0 py-2 small d-flex align-items-center">
+                    <i class="fas fa-chevron-right me-2 text-danger"></i> {{ sub }}
+                    <span class="ms-auto"><a href="/quiz/" class="badge-custom badge-hard text-decoration-none">Practice Quiz</a></span>
+                </li>
+                {% endfor %}
+            </ul>
+        </div>
+    </div>
+</div>
+
+<!-- Dynamic Performance Analytics charts -->
+<div class="row">
+    <div class="col-lg-7 mb-4">
+        <div class="glass-card-no-hover h-100">
+            <h4 class="mb-4 text-white"><i class="fas fa-chart-line me-2 text-indigo"></i>Practice History</h4>
+            <div style="position: relative; height:300px; width:100%">
+                <canvas id="historyChart"></canvas>
+            </div>
+        </div>
+    </div>
+    <div class="col-lg-5 mb-4">
+        <div class="glass-card-no-hover h-100">
+            <h4 class="mb-4 text-white"><i class="fas fa-chart-bar me-2 text-indigo"></i>Domain Performance</h4>
+            <div style="position: relative; height:300px; width:100%">
+                <canvas id="domainChart"></canvas>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<!-- ChartJS -->
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script>
+document.addEventListener('DOMContentLoaded', () => {
+    // Config values passed from django view
+    const historyLabels = {{ history_labels|safe }};
+    const historyScores = {{ history_scores|safe }};
+    const domainLabels = {{ domain_labels|safe }};
+    const domainValues = {{ domain_values|safe }};
+
+    // Style helper for charts (matching dark mode)
+    const isDark = document.documentElement.getAttribute('data-theme') === 'dark';
+    const gridColor = 'rgba(255, 255, 255, 0.08)';
+    const textColor = '#94a3b8';
+
+    // Chart 1: Practice History
+    const ctxHistory = document.getElementById('historyChart').getContext('2d');
+    new Chart(ctxHistory, {
+        type: 'line',
+        data: {
+            labels: historyLabels.length ? historyLabels : ['No Data'],
+            datasets: [{
+                label: 'Quiz Score (%)',
+                data: historyScores.length ? historyScores : [0],
+                borderColor: '#6366f1',
+                backgroundColor: 'rgba(99, 102, 241, 0.1)',
+                borderWidth: 3,
+                tension: 0.3,
+                fill: true,
+                pointBackgroundColor: '#6366f1',
+                pointRadius: 4
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+                legend: { display: false }
+            },
+            scales: {
+                x: {
+                    grid: { color: gridColor },
+                    ticks: { color: textColor }
+                },
+                y: {
+                    min: 0,
+                    max: 100,
+                    grid: { color: gridColor },
+                    ticks: { color: textColor }
+                }
+            }
+        }
+    });
+
+    // Chart 2: Domain Performance
+    const ctxDomain = document.getElementById('domainChart').getContext('2d');
+    new Chart(ctxDomain, {
+        type: 'bar',
+        data: {
+            labels: domainLabels,
+            datasets: [{
+                label: 'Average Score',
+                data: domainValues,
+                backgroundColor: 'rgba(99, 102, 241, 0.65)',
+                borderColor: '#6366f1',
+                borderWidth: 1,
+                borderRadius: 6
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+                legend: { display: false }
+            },
+            scales: {
+                x: {
+                    grid: { display: false },
+                    ticks: { color: textColor, font: { size: 10 } }
+                },
+                y: {
+                    min: 0,
+                    max: 100,
+                    grid: { color: gridColor },
+                    ticks: { color: textColor }
+                }
+            }
+        }
+    });
+});
+</script>
+{% endblock %}
