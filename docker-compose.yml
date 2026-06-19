@@ -42,5 +42,32 @@ services:
       db:
         condition: service_healthy
 
+  prometheus:
+    image: prom/prometheus:v2.45.0
+    container_name: interview_prometheus
+    restart: always
+    volumes:
+      - ./prometheus.yml:/etc/prometheus/prometheus.yml
+      - prometheus_data:/prometheus
+    ports:
+      - "9090:9090"
+    depends_on:
+      - web
+
+  grafana:
+    image: grafana/grafana:10.0.0
+    container_name: interview_grafana
+    restart: always
+    environment:
+      - GF_SECURITY_ADMIN_PASSWORD=admin
+    volumes:
+      - grafana_data:/var/lib/grafana
+    ports:
+      - "3000:3000"
+    depends_on:
+      - prometheus
+
 volumes:
   mysql_data:
+  prometheus_data:
+  grafana_data:

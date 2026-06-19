@@ -7,6 +7,7 @@ from accounts.views import dashboard_view
 urlpatterns = [
     path('admin/', admin.site.urls),
     path('', dashboard_view, name='dashboard'),
+    path('', include('django_prometheus.urls')),
     path('accounts/', include('accounts.urls')),
     path('resume/', include('resume_analyzer.urls')),
     path('quiz/', include('quiz.urls')),

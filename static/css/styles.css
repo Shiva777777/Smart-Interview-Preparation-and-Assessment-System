@@ -406,3 +406,44 @@ h6 {
     padding: 1.5rem;
   }
 }
+
+/* Fix select element options in dark/light themes */
+.form-control-custom option {
+  background-color: var(--bg-secondary);
+  color: var(--text-primary);
+}
+
+/* Light Theme overrides for hardcoded dark-mode helper classes */
+[data-theme="light"] .text-white {
+  color: var(--text-primary) !important;
+}
+
+[data-theme="light"] .text-light {
+  color: var(--text-secondary) !important;
+}
+
+[data-theme="light"] .table-dark {
+  color: var(--text-primary) !important;
+  --bs-table-color: var(--text-primary) !important;
+  --bs-table-striped-color: var(--text-primary) !important;
+  --bs-table-active-color: var(--text-primary) !important;
+  --bs-table-hover-color: var(--text-primary) !important;
+  --bs-table-striped-bg: rgba(0, 0, 0, 0.02) !important;
+  --bs-table-hover-bg: rgba(0, 0, 0, 0.04) !important;
+  --bs-table-border-color: rgba(0, 0, 0, 0.08) !important;
+}
+
+/* Theme overrides for text visibility and custom utility borders */
+.text-muted,
+.text-secondary,
+.text-body-secondary {
+  color: var(--text-secondary) !important;
+}
+
+.border-color {
+  border-color: var(--border-color) !important;
+}
+
+#console-stdout {
+  color: #f8fafc !important;
+}

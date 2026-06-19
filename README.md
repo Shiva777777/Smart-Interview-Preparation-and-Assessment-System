@@ -38,18 +38,23 @@ An advanced, end-to-end interview preparation and evaluation platform designed f
 *   Global candidate ranking sorted by total experience/activity points (Quizzes: 10 pts, Code solved: 25 pts).
 *   Dynamic landscape PDF certificates generated with `ReportLab` featuring secure verification hashes.
 
+### 8. System Metrics & Monitoring
+*   **Prometheus Integration**: Exposes real-time Django performance metrics (requests, latencies, active sessions, database connections).
+*   **Grafana Dashboards**: Visualizes system behavior, traffic distribution, error counts, and resource loads.
+
 ---
 
 ## 🛠️ Technology Stack
 
-*   **Backend:** Python 3.12, Django 5.x
+*   **Backend:** Python 3.12, Django 5.x, Django-Prometheus
 *   **Database:** MySQL (SQLite fallback configuration included)
+*   **Monitoring & Logging:** Prometheus (v2.45), Grafana (v10.0)
 *   **Libraries:** `pdfplumber`, `python-docx`, `reportlab`, `gTTS`, `SpeechRecognition`, `mysqlclient`, `pandas`, `numpy`
 *   **Frontend:** HTML5, CSS3 (Custom Glassmorphism), Bootstrap 5, JavaScript (AJAX)
 
 ---
 
-## ⚙️ Local Setup Instructions
+## ⚙️ Local Setup Instructions (Without Docker)
 
 ### Step 1: Clone the repository and navigate to root
 ```bash
@@ -96,3 +101,34 @@ Run the local development server:
 python manage.py runserver
 ```
 Navigate to `http://127.0.0.1:8000/` in your web browser!
+
+---
+
+## 🐳 Docker & Monitoring Setup (Recommended)
+
+The easiest way to run the entire stack (including MySQL, Django, Prometheus, and Grafana) is using Docker Compose.
+
+### Step 1: Run the Docker containers
+Make sure Docker and Docker Compose are installed, then execute:
+```bash
+docker compose up --build -d
+```
+This command will build the Django web service, pull MySQL, Prometheus, and Grafana, set up volumes, run migrations, and spin up the services.
+
+### Step 2: Accessing the Services
+Once all containers are running, you can access the following services:
+*   **Web Application:** `http://localhost:8888/`
+*   **Raw Django Metrics:** `http://localhost:8888/metrics` (Exposed by `django-prometheus`)
+*   **Prometheus Dashboard:** `http://localhost:9090/` (Check target status at `/targets`)
+*   **Grafana Dashboard:** `http://localhost:3000/`
+
+### Step 3: Configuring Grafana Dashboard
+1. Log into Grafana at `http://localhost:3000` with the default username `admin` and password `admin` (you will be prompted to set a new password on first login).
+2. Go to **Connections > Data Sources** and click **Add data source**.
+3. Select **Prometheus**.
+4. Set the **Prometheus server URL** to `http://prometheus:9090` and click **Save & test**.
+5. To import a pre-configured Django dashboard:
+   * Go to **Dashboards > New > Import**.
+   * Enter the Dashboard ID `9528` (or `17605` for custom django metrics) and click **Load**.
+   * Select your Prometheus data source and click **Import**.
+
