@@ -1,0 +1,46 @@
+version: '3.8'
+
+services:
+  db:
+    image: mysql:8.0
+    container_name: interview_db
+    restart: always
+    environment:
+      MYSQL_DATABASE: interview_prep
+      MYSQL_USER: interview_user
+      MYSQL_PASSWORD: Shiva@9876#Data
+      MYSQL_ROOT_PASSWORD: rootpassword
+    ports:
+      # Forward host port 3307 to container port 3306 to avoid conflicts with host's local MySQL
+      - "3307:3306"
+    volumes:
+      - mysql_data:/var/lib/mysql
+    healthcheck:
+      test: [ "CMD", "mysqladmin", "ping", "-h", "localhost", "-u$$MYSQL_USER", "-p$$MYSQL_PASSWORD" ]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 15s
+
+  web:
+    build: .
+    container_name: interview_web
+    restart: always
+    command: sh -c "python manage.py migrate && python manage.py runserver 0.0.0.0:8000"
+    volumes:
+      # Bind mount the local codebase for hot-reloading in development
+      - .:/app
+    ports:
+      - "8888:8000"
+    environment:
+      - DB_NAME=interview_prep
+      - DB_USER=interview_user
+      - DB_PASSWORD=Shiva@9876#Data
+      - DB_HOST=db
+      - DB_PORT=3306
+    depends_on:
+      db:
+        condition: service_healthy
+
+volumes:
+  mysql_data:

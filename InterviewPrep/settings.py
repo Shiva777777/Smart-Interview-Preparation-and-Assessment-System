@@ -12,6 +12,13 @@ DEBUG = True
 
 ALLOWED_HOSTS = ['*']
 
+# CSRF Trusted Origins for ngrok tunnels and proxy endpoints
+CSRF_TRUSTED_ORIGINS = [
+    'https://unamiable-thrilling-leeanne.ngrok-free.dev',
+    'https://*.ngrok-free.dev',
+    'https://*.ngrok.io',
+]
+
 # Application definition
 INSTALLED_APPS = [
     'django.contrib.admin',
@@ -69,11 +76,11 @@ try:
     DATABASES = {
         'default': {
             'ENGINE': 'django.db.backends.mysql',
-            'NAME': 'interview_prep',
-            'USER': 'interview_user',
-            'PASSWORD': 'Shiva@9876#Data',
-            'HOST': '127.0.0.1',
-            'PORT': '3306',
+            'NAME': os.environ.get('DB_NAME', 'interview_prep'),
+            'USER': os.environ.get('DB_USER', 'interview_user'),
+            'PASSWORD': os.environ.get('DB_PASSWORD', 'Shiva@9876#Data'),
+            'HOST': os.environ.get('DB_HOST', '127.0.0.1'),
+            'PORT': os.environ.get('DB_PORT', '3306'),
             'OPTIONS': {
                 'init_command': "SET sql_mode='STRICT_TRANS_TABLES'",
                 'charset': 'utf8mb4',
