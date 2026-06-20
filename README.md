@@ -127,8 +127,12 @@ Once all containers are running, you can access the following services:
 2. Go to **Connections > Data Sources** and click **Add data source**.
 3. Select **Prometheus**.
 4. Set the **Prometheus server URL** to `http://prometheus:9090` and click **Save & test**.
-5. To import a pre-configured Django dashboard:
+5. To import pre-configured dashboards:
    * Go to **Dashboards > New > Import**.
-   * Enter the Dashboard ID `9528` (or `17605` for custom django metrics) and click **Load**.
+   * Enter one of the following Dashboard IDs and click **Load**:
+     * **Django Prometheus Metrics:** `9528` (or `17605`)
+     * **Host CPU/RAM/Disk (Node Exporter):** `1860`
+     * **MySQL Database Metrics:** `7362`
+     * **NVIDIA GPU Metrics (Optional):** `14574`
    * Select your Prometheus data source and click **Import**.
 
