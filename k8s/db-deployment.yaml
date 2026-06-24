@@ -1,0 +1,91 @@
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: mysql-pvc
+  namespace: default
+spec:
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: 2Gi
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: db
+  namespace: default
+spec:
+  ports:
+    - port: 3306
+      targetPort: 3306
+  selector:
+    app: db
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: db
+  namespace: default
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: db
+  template:
+    metadata:
+      labels:
+        app: db
+    spec:
+      containers:
+        - name: mysql
+          image: mysql:8.0
+          ports:
+            - containerPort: 3306
+              name: mysql
+          env:
+            - name: MYSQL_DATABASE
+              valueFrom:
+                secretKeyRef:
+                  name: interview-secrets
+                  key: mysql-database
+            - name: MYSQL_USER
+              valueFrom:
+                secretKeyRef:
+                  name: interview-secrets
+                  key: mysql-user
+            - name: MYSQL_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: interview-secrets
+                  key: mysql-password
+            - name: MYSQL_ROOT_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: interview-secrets
+                  key: mysql-root-password
+          volumeMounts:
+            - name: mysql-storage
+              mountPath: /var/lib/mysql
+          livenessProbe:
+            exec:
+              command:
+                - bash
+                - -c
+                - mysqladmin ping -h localhost -u$MYSQL_USER -p$MYSQL_PASSWORD
+            initialDelaySeconds: 30
+            periodSeconds: 15
+            timeoutSeconds: 5
+          readinessProbe:
+            exec:
+              command:
+                - bash
+                - -c
+                - mysqladmin ping -h localhost -u$MYSQL_USER -p$MYSQL_PASSWORD
+            initialDelaySeconds: 15
+            periodSeconds: 10
+            timeoutSeconds: 5
+      volumes:
+        - name: mysql-storage
+          persistentVolumeClaim:
+            claimName: mysql-pvc

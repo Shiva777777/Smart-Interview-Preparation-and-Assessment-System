@@ -1,0 +1,51 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: mysqld-exporter
+  namespace: default
+spec:
+  ports:
+    - port: 9104
+      targetPort: 9104
+  selector:
+    app: mysqld-exporter
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: mysqld-exporter
+  namespace: default
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: mysqld-exporter
+  template:
+    metadata:
+      labels:
+        app: mysqld-exporter
+    spec:
+      containers:
+        - name: mysqld-exporter
+          image: prom/mysqld-exporter:v0.14.0
+          ports:
+            - containerPort: 9104
+              name: scrape
+          env:
+            - name: DATA_SOURCE_NAME
+              valueFrom:
+                secretKeyRef:
+                  name: interview-secrets
+                  key: mysql-data-source
+          livenessProbe:
+            httpGet:
+              path: /-/healthy
+              port: 9104
+            initialDelaySeconds: 15
+            periodSeconds: 20
+          readinessProbe:
+            httpGet:
+              path: /-/healthy
+              port: 9104
+            initialDelaySeconds: 10
+            periodSeconds: 10
