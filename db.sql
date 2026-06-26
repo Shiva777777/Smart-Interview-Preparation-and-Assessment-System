@@ -1,5 +1,5 @@
 -- =====================================================================
--- Database Schema for AI-Powered Smart Interview Preparation and Assessment System
+-- Database Schema for AI Interview Assistant
 -- Target Database: MySQL 8.x / 5.7
 -- =====================================================================
 

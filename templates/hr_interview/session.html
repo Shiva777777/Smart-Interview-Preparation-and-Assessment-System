@@ -1,6 +1,6 @@
 {% extends 'base.html' %}
 
-{% block title %}HR Session: {{ question.text|truncatewords:5 }} | InterviewPrep{% endblock %}
+{% block title %}HR Session: {{ question.text|truncatewords:5 }} | AI Interview Assistant{% endblock %}
 {% block page_header %}HR Interview Session{% endblock %}
 
 {% block extra_css %}
@@ -100,7 +100,7 @@
 
             <!-- Feedback Panel (Hidden initially, shown after submit/evaluate) -->
             <div class="glass-card-no-hover d-none" id="feedback-panel">
-                <h4 class="text-white fw-bold mb-3"><i class="fas fa-chart-line text-indigo me-2"></i>AI Performance Evaluation</h4>
+                <h4 class="text-white fw-bold mb-3" id="feedback-title"><i class="fas fa-chart-line text-indigo me-2"></i>AI Performance Evaluation</h4>
                 
                 <div class="mb-4">
                     <label class="form-label form-label-custom d-flex justify-content-between mb-2">
@@ -314,6 +314,20 @@
                 // Populate feedback panel
                 const panel = document.getElementById('feedback-panel');
                 panel.classList.remove('d-none');
+
+                // Update evaluator badge
+                let badge = '';
+                if (data.evaluator === 'gemini') {
+                    badge = '<span class="badge bg-success ms-2" style="font-size: 0.75rem;"><i class="fas fa-robot me-1"></i>Gemini AI</span>';
+                } else {
+                    let errText = '';
+                    if (data.evaluator_error) {
+                        let cleanErr = data.evaluator_error.length > 50 ? data.evaluator_error.substring(0, 50) + '...' : data.evaluator_error;
+                        errText = ` (${cleanErr})`;
+                    }
+                    badge = `<span class="badge bg-secondary ms-2" style="font-size: 0.75rem;" title="${data.evaluator_error || ''}"><i class="fas fa-code me-1"></i>Local Analyzer${errText}</span>`;
+                }
+                document.getElementById('feedback-title').innerHTML = `<i class="fas fa-chart-line text-indigo me-2"></i>AI Performance Evaluation ${badge}`;
 
                 document.getElementById('feedback-score-display').innerText = `${data.score}%`;
                 const progress = document.getElementById('feedback-progress-bar');

@@ -137,6 +137,12 @@ h6 {
   display: flex;
   flex-direction: column;
   padding: 1.5rem 1rem;
+  overflow-y: auto;
+  scrollbar-width: none; /* Firefox */
+}
+
+.sidebar::-webkit-scrollbar {
+  display: none; /* Chrome, Safari, Opera */
 }
 
 .main-content {
@@ -179,7 +185,6 @@ h6 {
   display: flex;
   flex-direction: column;
   gap: 0.5rem;
-  flex: 1;
 }
 
 .nav-link-custom {
@@ -399,6 +404,13 @@ h6 {
   .sidebar .nav-link-custom {
     justify-content: center;
     padding: 0.8rem;
+  }
+
+  .sidebar .user-profile-section {
+    flex-direction: column;
+    gap: 1rem;
+    padding-top: 1rem;
+    align-items: center;
   }
 
   .main-content {

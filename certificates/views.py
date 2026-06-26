@@ -163,7 +163,7 @@ def generate_certificate_view(request, attempt_id):
             Paragraph("Academic Lead", sig_style_title)
         ],
         [
-            Paragraph("Smart Interview Prep Institute", sig_style_inst),
+            Paragraph("AI Interview Assistant", sig_style_inst),
             Paragraph("AI Evaluation Board", sig_style_inst)
         ]
     ]

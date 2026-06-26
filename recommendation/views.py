@@ -71,23 +71,81 @@ def recommendation_view(request):
         else:
             domain_scores[cat] = None # Not attempted yet
 
-    recommendations = []
+    import os
+    from django.conf import settings
+    import urllib.request
+    import json
+
+    api_key = os.environ.get('GEMINI_API_KEY') or getattr(settings, 'GEMINI_API_KEY', '')
+    weak_domains = [cat for cat in categories if domain_scores[cat] is None or domain_scores[cat] < 70.0]
     
-    for cat in categories:
-        score = domain_scores[cat]
-        # Recommend if score is below 70% or not attempted yet
-        if score is None or score < 70.0:
-            resource = RECOMMENDATION_RESOURCES.get(cat)
-            if resource:
-                recommendations.append({
-                    'domain': cat,
-                    'score': score, # None if not attempted
-                    'topics': resource['topics'],
-                    'pdf_title': resource['pdf_title'],
-                    'pdf_url': resource['pdf_url'],
-                    'video_title': resource['video_title'],
-                    'video_url': resource['video_url']
-                })
+    recommendations = []
+    if api_key and weak_domains:
+        try:
+            url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-flash-latest:generateContent?key={api_key}"
+            prompt = (
+                f"A candidate is preparing for interviews but is weak in the following topics/domains: {weak_domains}.\n\n"
+                f"Suggest personalized learning resources for each weak domain. Return the result strictly as a JSON array where each object has these keys:\n"
+                f"- 'domain': The domain name (must be one of: {weak_domains})\n"
+                f"- 'topics': A list of 3-4 specific sub-topics they should focus on (list of strings)\n"
+                f"- 'pdf_title': Title of a recommended study guide, article, or documentation (string)\n"
+                f"- 'pdf_url': A valid link to that study guide or official documentation (string)\n"
+                f"- 'video_title': Title of a recommended video tutorial or playlist (string)\n"
+                f"- 'video_url': A valid YouTube link or educational video link (string)\n\n"
+                f"Return ONLY the raw JSON array, without any markdown formatting or backticks."
+            )
+            data = {
+                "contents": [{
+                    "parts": [{
+                        "text": prompt
+                    }]
+                }]
+            }
+            req = urllib.request.Request(
+                url,
+                data=json.dumps(data).encode('utf-8'),
+                headers={
+                    'Content-Type': 'application/json',
+                    'x-goog-api-key': api_key
+                },
+                method='POST'
+            )
+            with urllib.request.urlopen(req, timeout=15) as response:
+                res_data = json.loads(response.read().decode('utf-8'))
+                text_response = res_data['candidates'][0]['content']['parts'][0]['text'].strip()
+                
+                if text_response.startswith("```"):
+                    lines = text_response.splitlines()
+                    if lines[0].startswith("```"):
+                        lines = lines[1:]
+                    if lines and lines[-1].startswith("```"):
+                        lines = lines[:-1]
+                    text_response = "\n".join(lines).strip()
+                
+                recommendations = json.loads(text_response)
+                # Map score back to recommendations
+                for rec in recommendations:
+                    rec['score'] = domain_scores.get(rec.get('domain'))
+        except Exception as e:
+            print(f"Gemini Recommendation failed: {str(e)}. Falling back to local resources.")
+            recommendations = []
+
+    # Fallback to local resources if Gemini fails or is not configured
+    if not recommendations:
+        for cat in categories:
+            score = domain_scores[cat]
+            if score is None or score < 70.0:
+                resource = RECOMMENDATION_RESOURCES.get(cat)
+                if resource:
+                    recommendations.append({
+                        'domain': cat,
+                        'score': score,
+                        'topics': resource['topics'],
+                        'pdf_title': resource['pdf_title'],
+                        'pdf_url': resource['pdf_url'],
+                        'video_title': resource['video_title'],
+                        'video_url': resource['video_url']
+                    })
 
     return render(request, 'recommendation/display.html', {
         'recommendations': recommendations,

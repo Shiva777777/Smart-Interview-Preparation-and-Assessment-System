@@ -1,4 +1,4 @@
-# AI-Powered Smart Interview Preparation and Assessment System
+# AI Interview Assistant
 
 An advanced, end-to-end interview preparation and evaluation platform designed for Computer Science students. Built using **Django 5.x**, **MySQL**, and **Bootstrap 5**, featuring a premium dark-themed "Bento Grid" user interface with glassmorphism styling.
 

@@ -46,13 +46,74 @@ def roadmap_view(request):
         created = True
 
     if created or not roadmap.milestones.exists():
-        templates = ROADMAP_TEMPLATES.get(career_goal, [])
-        for temp in templates:
+        import os
+        from django.conf import settings
+        import urllib.request
+        import json
+
+        api_key = os.environ.get('GEMINI_API_KEY') or getattr(settings, 'GEMINI_API_KEY', '')
+        
+        milestones_list = []
+        if api_key:
+            try:
+                url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-flash-latest:generateContent?key={api_key}"
+                prompt = (
+                    f"Create a personalized 4-month learning roadmap for a candidate who wants to become a: '{career_goal}'.\n\n"
+                    f"Return your response strictly as a JSON array containing exactly 4 objects (one for each month: Month 1, Month 2, Month 3, Month 4).\n"
+                    f"Each object must have exactly these keys:\n"
+                    f"- 'month': An integer (1, 2, 3, or 4)\n"
+                    f"- 'topic': A short string representing the month's topic\n"
+                    f"- 'description': A brief, 1-2 sentence description of what to learn and master during that month\n\n"
+                    f"Return ONLY the raw JSON array, without any markdown formatting or backticks."
+                )
+                data = {
+                    "contents": [{
+                        "parts": [{
+                            "text": prompt
+                        }]
+                    }]
+                }
+                req = urllib.request.Request(
+                    url,
+                    data=json.dumps(data).encode('utf-8'),
+                    headers={
+                        'Content-Type': 'application/json',
+                        'x-goog-api-key': api_key
+                    },
+                    method='POST'
+                )
+                with urllib.request.urlopen(req, timeout=15) as response:
+                    res_data = json.loads(response.read().decode('utf-8'))
+                    text_response = res_data['candidates'][0]['content']['parts'][0]['text'].strip()
+                    
+                    if text_response.startswith("```"):
+                        lines = text_response.splitlines()
+                        if lines[0].startswith("```"):
+                            lines = lines[1:]
+                        if lines and lines[-1].startswith("```"):
+                            lines = lines[:-1]
+                        text_response = "\n".join(lines).strip()
+                    
+                    milestones_list = json.loads(text_response)
+            except Exception as e:
+                print(f"Gemini Roadmap generation failed: {str(e)}. Falling back to local templates.")
+
+        if not milestones_list:
+            milestones_list = ROADMAP_TEMPLATES.get(career_goal, [])
+            if not milestones_list:
+                milestones_list = [
+                    {'month': 1, 'topic': f'Foundations of {career_goal}', 'description': f'Learn the fundamental concepts, basic tools, and initial setup required for a {career_goal}.'},
+                    {'month': 2, 'topic': f'Intermediate concepts in {career_goal}', 'description': f'Build your first projects, learn best practices, and work with core frameworks.'},
+                    {'month': 3, 'topic': f'Advanced topics in {career_goal}', 'description': f'Master advanced architecture, optimizations, and modern design patterns.'},
+                    {'month': 4, 'topic': f'System Integration & Portfolio', 'description': f'Build a capstone project, deploy it, and prepare for interviews as a {career_goal}.'}
+                ]
+
+        for temp in milestones_list:
             Milestone.objects.create(
                 roadmap=roadmap,
-                month=temp['month'],
-                topic=temp['topic'],
-                description=temp['description']
+                month=temp.get('month', 1),
+                topic=temp.get('topic', 'Topic'),
+                description=temp.get('description', 'Description')
             )
 
     milestones = roadmap.milestones.all().order_by('month')

@@ -1,0 +1,10 @@
+.env
+venv/
+__pycache__/
+*.pyc
+api_test_debug.txt
+db.sqlite3
+.pytest_cache/
+*.log
+media/
+staticfiles/

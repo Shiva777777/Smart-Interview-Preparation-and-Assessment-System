@@ -38,6 +38,7 @@ services:
       - DB_PASSWORD=Shiva@9876#Data
       - DB_HOST=db
       - DB_PORT=3306
+      - GEMINI_API_KEY=${GEMINI_API_KEY}
     depends_on:
       db:
         condition: service_healthy

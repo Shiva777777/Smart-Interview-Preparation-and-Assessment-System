@@ -37,8 +37,11 @@ def resume_upload_view(request):
             text = extract_text_from_docx(uploaded_file)
 
         # Parse text details
+        import os
+        from django.conf import settings
+        api_key = os.environ.get('GEMINI_API_KEY') or getattr(settings, 'GEMINI_API_KEY', '')
         master_skills = list(Skill.objects.values_list('name', flat=True))
-        parsed = parse_resume_text(text, master_skills)
+        parsed = parse_resume_text(text, master_skills, api_key=api_key)
 
         # Create or update database record
         if not analysis:

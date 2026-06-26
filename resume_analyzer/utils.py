@@ -41,7 +41,75 @@ def extract_text_from_docx(file_file):
         text = f"Error reading DOCX: {str(e)}"
     return text
 
-def parse_resume_text(text, master_skills):
+def parse_resume_text(text, master_skills, api_key=None):
+    if api_key:
+        try:
+            import urllib.request
+            import json
+            url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-flash-latest:generateContent?key={api_key}"
+            prompt = (
+                f"You are an expert resume parser. Analyze the following resume text:\n\n"
+                f"{text}\n\n"
+                f"Extract the following information and return it strictly as a JSON object with these keys:\n"
+                f"- 'name': The candidate's name (string)\n"
+                f"- 'email': The candidate's email address (string)\n"
+                f"- 'phone': The candidate's phone number (string)\n"
+                f"- 'education': A summary of candidate's education history (string, bulleted or formatted)\n"
+                f"- 'certifications': A summary of candidate's certifications (string, bulleted or formatted)\n"
+                f"- 'skills': A list of technical skills found in the resume (list of strings). Select skills from this list if they match: {master_skills}\n\n"
+                f"Return ONLY the raw JSON object, without any markdown formatting or backticks."
+            )
+            data = {
+                "contents": [{
+                    "parts": [{
+                        "text": prompt
+                    }]
+                }]
+            }
+            req = urllib.request.Request(
+                url,
+                data=json.dumps(data).encode('utf-8'),
+                headers={
+                    'Content-Type': 'application/json',
+                    'x-goog-api-key': api_key
+                },
+                method='POST'
+            )
+            with urllib.request.urlopen(req, timeout=15) as response:
+                res_data = json.loads(response.read().decode('utf-8'))
+                text_response = res_data['candidates'][0]['content']['parts'][0]['text'].strip()
+                
+                # Clean possible markdown block markers
+                if text_response.startswith("```"):
+                    lines = text_response.splitlines()
+                    if lines[0].startswith("```"):
+                        lines = lines[1:]
+                    if lines and lines[-1].startswith("```"):
+                        lines = lines[:-1]
+                    text_response = "\n".join(lines).strip()
+                
+                parsed_json = json.loads(text_response)
+                # Ensure all required keys exist and skills are filtered to master_skills
+                skills_list = parsed_json.get('skills', [])
+                matched_skills = [s for s in skills_list if s in master_skills]
+                if not matched_skills:
+                    # Try simple case-insensitive fallback mapping
+                    text_lower = text.lower()
+                    for skill in master_skills:
+                        if re.search(r'\b' + re.escape(skill.lower()) + r'\b', text_lower):
+                            matched_skills.append(skill)
+                
+                return {
+                    'name': parsed_json.get('name'),
+                    'email': parsed_json.get('email'),
+                    'phone': parsed_json.get('phone'),
+                    'education': parsed_json.get('education') or "Not clearly identified",
+                    'certifications': parsed_json.get('certifications') or "Not clearly identified",
+                    'skills': matched_skills
+                }
+        except Exception as e:
+            print(f"Gemini Resume Parsing failed: {str(e)}. Falling back to local parser.")
+
     parsed_data = {
         'name': None,
         'email': None,
