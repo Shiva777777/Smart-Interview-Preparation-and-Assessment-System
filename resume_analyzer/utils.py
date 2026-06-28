@@ -46,7 +46,8 @@ def parse_resume_text(text, master_skills, api_key=None):
         try:
             import urllib.request
             import json
-            url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-flash-latest:generateContent?key={api_key}"
+            import time
+
             prompt = (
                 f"You are an expert resume parser. Analyze the following resume text:\n\n"
                 f"{text}\n\n"
@@ -56,7 +57,7 @@ def parse_resume_text(text, master_skills, api_key=None):
                 f"- 'phone': The candidate's phone number (string)\n"
                 f"- 'education': A summary of candidate's education history (string, bulleted or formatted)\n"
                 f"- 'certifications': A summary of candidate's certifications (string, bulleted or formatted)\n"
-                f"- 'skills': A list of technical skills found in the resume (list of strings). Select skills from this list if they match: {master_skills}\n\n"
+                f"- 'skills': A list of technical skills found in the resume (list of strings). Extract all technical skills mentioned in the resume (e.g. AutoCAD, STAAD.Pro, ETABS, MS Excel, Surveying, Estimation, RCC Design, Quantity Surveying, Python, Django, etc.). Do not limit yourself, extract all matching technical skills.\n\n"
                 f"Return ONLY the raw JSON object, without any markdown formatting or backticks."
             )
             data = {
@@ -66,49 +67,106 @@ def parse_resume_text(text, master_skills, api_key=None):
                     }]
                 }]
             }
-            req = urllib.request.Request(
-                url,
-                data=json.dumps(data).encode('utf-8'),
-                headers={
-                    'Content-Type': 'application/json',
-                    'x-goog-api-key': api_key
-                },
-                method='POST'
-            )
-            with urllib.request.urlopen(req, timeout=15) as response:
-                res_data = json.loads(response.read().decode('utf-8'))
-                text_response = res_data['candidates'][0]['content']['parts'][0]['text'].strip()
-                
-                # Clean possible markdown block markers
-                if text_response.startswith("```"):
-                    lines = text_response.splitlines()
-                    if lines[0].startswith("```"):
-                        lines = lines[1:]
-                    if lines and lines[-1].startswith("```"):
-                        lines = lines[:-1]
-                    text_response = "\n".join(lines).strip()
-                
-                parsed_json = json.loads(text_response)
-                # Ensure all required keys exist and skills are filtered to master_skills
+
+            models = [
+                "gemini-3.5-flash",
+                "gemini-3.1-flash-lite",
+                "gemini-2.5-flash",
+                "gemini-2.0-flash",
+                "gemini-2.0-flash-lite",
+                "gemini-1.5-flash",
+                "gemini-flash-latest"
+            ]
+
+            parsed_json = None
+            last_error = None
+
+            for model in models:
+                for api_version in ["v1beta", "v1"]:
+                    url = f"https://generativelanguage.googleapis.com/{api_version}/models/{model}:generateContent?key={api_key}"
+                    for attempt in range(2):
+                        try:
+                            req = urllib.request.Request(
+                                url,
+                                data=json.dumps(data).encode('utf-8'),
+                                headers={
+                                    'Content-Type': 'application/json',
+                                    'x-goog-api-key': api_key
+                                },
+                                method='POST'
+                            )
+                            with urllib.request.urlopen(req, timeout=15) as response:
+                                res_data = json.loads(response.read().decode('utf-8'))
+                                text_response = res_data['candidates'][0]['content']['parts'][0]['text'].strip()
+                                
+                                # Clean possible markdown block markers
+                                if text_response.startswith("```"):
+                                    lines = text_response.splitlines()
+                                    if lines[0].startswith("```"):
+                                        lines = lines[1:]
+                                    if lines and lines[-1].startswith("```"):
+                                        lines = lines[:-1]
+                                    text_response = "\n".join(lines).strip()
+                                
+                                parsed_json = json.loads(text_response)
+                                break
+                        except Exception as e:
+                            last_error = e
+                            error_msg = str(e)
+                            if "404" in error_msg or "400" in error_msg or "403" in error_msg or "429" in error_msg:
+                                break
+                            time.sleep(1)
+                    if parsed_json is not None:
+                        break
+                if parsed_json is not None:
+                    break
+
+            if parsed_json is not None:
+                def clean_str_field(val):
+                    if val is None:
+                        return ""
+                    if isinstance(val, list):
+                        return ", ".join(clean_str_field(item) for item in val if item is not None)
+                    if isinstance(val, dict):
+                        return ", ".join(f"{k}: {clean_str_field(v)}" for k, v in val.items() if v is not None)
+                    return str(val).strip()
+
                 skills_list = parsed_json.get('skills', [])
-                matched_skills = [s for s in skills_list if s in master_skills]
-                if not matched_skills:
-                    # Try simple case-insensitive fallback mapping
+                cleaned_skills = []
+                if isinstance(skills_list, list):
+                    for s in skills_list:
+                        if isinstance(s, str):
+                            cleaned_skills.append(s.strip())
+                        elif isinstance(s, list):
+                            for sub_s in s:
+                                if isinstance(sub_s, str):
+                                    cleaned_skills.append(sub_s.strip())
+                        elif isinstance(s, dict):
+                            for val in s.values():
+                                if isinstance(val, str):
+                                    cleaned_skills.append(val.strip())
+                elif isinstance(skills_list, str):
+                    cleaned_skills = [s.strip() for s in skills_list.split(',') if s.strip()]
+                
+                if not cleaned_skills:
                     text_lower = text.lower()
                     for skill in master_skills:
                         if re.search(r'\b' + re.escape(skill.lower()) + r'\b', text_lower):
-                            matched_skills.append(skill)
-                
+                            cleaned_skills.append(skill)
+
                 return {
-                    'name': parsed_json.get('name'),
-                    'email': parsed_json.get('email'),
-                    'phone': parsed_json.get('phone'),
-                    'education': parsed_json.get('education') or "Not clearly identified",
-                    'certifications': parsed_json.get('certifications') or "Not clearly identified",
-                    'skills': matched_skills
+                    'name': clean_str_field(parsed_json.get('name')),
+                    'email': clean_str_field(parsed_json.get('email')),
+                    'phone': clean_str_field(parsed_json.get('phone')),
+                    'education': clean_str_field(parsed_json.get('education')) or "Not clearly identified",
+                    'certifications': clean_str_field(parsed_json.get('certifications')) or "Not clearly identified",
+                    'skills': cleaned_skills,
+                    'extracted_by': 'AI'
                 }
+            else:
+                print(f"Gemini Resume Parsing failed: {str(last_error)}. Falling back to local parser.")
         except Exception as e:
-            print(f"Gemini Resume Parsing failed: {str(e)}. Falling back to local parser.")
+            print(f"Gemini Resume Parsing error during setup: {str(e)}. Falling back to local parser.")
 
     parsed_data = {
         'name': None,
@@ -116,7 +174,8 @@ def parse_resume_text(text, master_skills, api_key=None):
         'phone': None,
         'education': [],
         'certifications': [],
-        'skills': []
+        'skills': [],
+        'extracted_by': 'Code'
     }
 
     # Extract Email

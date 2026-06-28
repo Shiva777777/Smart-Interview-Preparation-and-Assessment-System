@@ -16,6 +16,7 @@ class ResumeAnalysis(models.Model):
     education = models.TextField(blank=True, null=True)
     certifications = models.TextField(blank=True, null=True)
     skills = models.ManyToManyField(Skill, blank=True, related_name='resumes')
+    extracted_by = models.CharField(max_length=10, default='Code', choices=[('AI', 'AI'), ('Code', 'Code')])
     uploaded_at = models.DateTimeField(auto_now_add=True)
 
     def __str__(self):

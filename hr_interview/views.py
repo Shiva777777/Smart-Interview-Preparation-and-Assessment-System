@@ -225,10 +225,12 @@ def evaluate_with_gemini(question_text, user_answer, api_key):
     
     # Models to try in order of preference
     models = [
+        "gemini-3.5-flash",
+        "gemini-3.1-flash-lite",
         "gemini-2.5-flash",
-        "gemini-1.5-flash",
-        "gemini-2.0-flash-lite",
         "gemini-2.0-flash",
+        "gemini-2.0-flash-lite",
+        "gemini-1.5-flash",
         "gemini-flash-latest"
     ]
     

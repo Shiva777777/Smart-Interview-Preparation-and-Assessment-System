@@ -53,13 +53,16 @@ def resume_upload_view(request):
         analysis.phone = parsed['phone']
         analysis.education = parsed['education']
         analysis.certifications = parsed['certifications']
+        analysis.extracted_by = parsed.get('extracted_by', 'Code')
         analysis.save()
 
         # Update parsed skills ManyToMany
         analysis.skills.clear()
         for skill_name in parsed['skills']:
-            skill_obj = Skill.objects.get(name=skill_name)
-            analysis.skills.add(skill_obj)
+            s_name = skill_name.strip()
+            if s_name:
+                skill_obj, _ = Skill.objects.get_or_create(name=s_name[:50])
+                analysis.skills.add(skill_obj)
         
         messages.success(request, "Resume parsed and analyzed successfully!")
         return redirect('resume_result')

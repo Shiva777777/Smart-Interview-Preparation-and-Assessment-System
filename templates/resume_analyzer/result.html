@@ -1,7 +1,14 @@
 {% extends 'base.html' %}
 
 {% block title %}Resume Analysis Details | AI Interview Assistant{% endblock %}
-{% block page_header %}Resume Analysis Results{% endblock %}
+{% block page_header %}
+Resume Analysis Results
+{% if analysis.extracted_by == 'AI' %}
+<span class="badge bg-success-subtle text-success border border-success-subtle ms-2 px-3 py-1.5 rounded-pill" style="font-size: 0.85rem;"><i class="fas fa-robot me-1 text-success"></i>AI Extracted</span>
+{% else %}
+<span class="badge bg-warning-subtle text-warning border border-warning-subtle ms-2 px-3 py-1.5 rounded-pill" style="font-size: 0.85rem;"><i class="fas fa-code me-1 text-warning"></i>System Code Parsed</span>
+{% endif %}
+{% endblock %}
 
 {% block content %}
 <div class="row">
