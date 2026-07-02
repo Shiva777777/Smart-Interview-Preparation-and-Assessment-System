@@ -7,8 +7,8 @@ class UserRegisterForm(forms.ModelForm):
     password = forms.CharField(widget=forms.PasswordInput(attrs={'class': 'form-control form-control-custom', 'placeholder': 'Password'}))
     confirm_password = forms.CharField(widget=forms.PasswordInput(attrs={'class': 'form-control form-control-custom', 'placeholder': 'Confirm Password'}))
     phone_number = forms.CharField(max_length=15, required=False, widget=forms.TextInput(attrs={'class': 'form-control form-control-custom', 'placeholder': 'Phone Number'}))
-    preferred_domain = forms.ChoiceField(choices=UserProfile._meta.get_field('preferred_domain').choices, required=False, widget=forms.Select(attrs={'class': 'form-control form-control-custom'}))
-    career_goal = forms.ChoiceField(choices=UserProfile._meta.get_field('career_goal').choices, required=False, widget=forms.Select(attrs={'class': 'form-control form-control-custom'}))
+    preferred_domain = forms.CharField(max_length=100, required=False, widget=forms.TextInput(attrs={'class': 'form-control form-control-custom', 'placeholder': 'Preferred Domain'}))
+    career_goal = forms.CharField(max_length=100, required=False, widget=forms.TextInput(attrs={'class': 'form-control form-control-custom', 'placeholder': 'Career Goal'}))
 
     class Meta:
         model = User
@@ -57,7 +57,7 @@ class ProfileUpdateForm(forms.ModelForm):
         fields = ['phone_number', 'preferred_domain', 'career_goal', 'bio']
         widgets = {
             'phone_number': forms.TextInput(attrs={'class': 'form-control form-control-custom'}),
-            'preferred_domain': forms.Select(attrs={'class': 'form-control form-control-custom'}),
-            'career_goal': forms.Select(attrs={'class': 'form-control form-control-custom'}),
+            'preferred_domain': forms.TextInput(attrs={'class': 'form-control form-control-custom', 'placeholder': 'e.g. Civil Engineering, Python Developer'}),
+            'career_goal': forms.TextInput(attrs={'class': 'form-control form-control-custom', 'placeholder': 'e.g. Civil Engineer, Backend Developer'}),
             'bio': forms.Textarea(attrs={'class': 'form-control form-control-custom', 'rows': 3}),
         }

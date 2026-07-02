@@ -37,17 +37,18 @@ def get_dashboard_data(user):
     total_hr = hr_attempts.count()
 
     # Strength & Weakness calculation based on categories
-    categories = ['Python', 'DBMS', 'Operating System', 'Computer Networks', 'DevOps', 'SQL', 'Machine Learning']
+    default_categories = ['Python', 'DBMS', 'Operating System', 'Computer Networks', 'DevOps', 'SQL', 'Machine Learning']
+    attempted_domains = list(quiz_attempts.values_list('domain', flat=True).distinct())
+    categories = list(set(default_categories + attempted_domains + detected_skills))
+
     domain_scores = {}
     for cat in categories:
         cat_avg = quiz_attempts.filter(domain=cat).aggregate(Avg('score'))['score__avg']
         if cat_avg is not None:
             domain_scores[cat] = float(cat_avg)
-        else:
-            domain_scores[cat] = 0.0
 
     strong_subjects = [cat for cat, score in domain_scores.items() if score >= 70]
-    weak_subjects = [cat for cat, score in domain_scores.items() if 0 < score < 50]
+    weak_subjects = [cat for cat, score in domain_scores.items() if score < 50]
 
     # Chart 1: Performance over time (line chart)
     attempts_history = list(quiz_attempts.order_by('completed_at')[:10].values('completed_at', 'score'))
@@ -57,6 +58,9 @@ def get_dashboard_data(user):
     # Chart 2: Domain score breakdown (radar/bar)
     domain_labels = list(domain_scores.keys())
     domain_values = list(domain_scores.values())
+    if not domain_labels:
+        domain_labels = default_categories
+        domain_values = [0.0] * len(default_categories)
 
     # Roadmap progress
     roadmap = RoadmapProgress.objects.filter(user=user).first()

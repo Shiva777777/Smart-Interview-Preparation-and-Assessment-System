@@ -18,7 +18,7 @@ class Question(models.Model):
         ('Hard', 'Hard'),
     ]
 
-    domain = models.CharField(max_length=50, choices=DOMAIN_CHOICES)
+    domain = models.CharField(max_length=50)
     difficulty = models.CharField(max_length=10, choices=DIFFICULTY_CHOICES)
     text = models.TextField()
     option_a = models.CharField(max_length=255)

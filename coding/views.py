@@ -102,6 +102,22 @@ def run_code_sandbox(code, stdin_input):
 
 @login_required
 def coding_home_view(request):
+    # Check if user domain is non-tech/non-programming
+    is_tech = False
+    profile = request.user.profile
+    domain = (profile.preferred_domain or "").lower()
+    goal = (profile.career_goal or "").lower()
+    
+    tech_keywords = ['python', 'django', 'devops', 'software', 'data science', 'machine learning', 'backend', 'frontend', 'web development', 'it', 'computer', 'coder', 'developer', 'programmer', 'coding', 'tech']
+    if not domain or any(kw in domain for kw in tech_keywords) or any(kw in goal for kw in tech_keywords):
+        is_tech = True
+        
+    if not is_tech:
+        return render(request, 'coding/non_tech_info.html', {
+            'domain': profile.preferred_domain,
+            'career_goal': profile.career_goal or "Professional"
+        })
+
     # Seed default questions if table is empty
     if not CodingQuestion.objects.exists():
         for q_data in DEFAULT_CODING_QUESTIONS:

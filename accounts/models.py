@@ -6,20 +6,8 @@ from django.dispatch import receiver
 class UserProfile(models.Model):
     user = models.OneToOneField(User, on_delete=models.CASCADE, related_name='profile')
     phone_number = models.CharField(max_length=15, blank=True, null=True)
-    preferred_domain = models.CharField(max_length=50, blank=True, null=True, choices=[
-        ('Python', 'Python Developer'),
-        ('DBMS', 'Database Administrator'),
-        ('Operating System', 'OS Engineer'),
-        ('Computer Networks', 'Network Engineer'),
-        ('DevOps', 'DevOps Engineer'),
-        ('SQL', 'SQL Developer'),
-        ('Machine Learning', 'Data Scientist'),
-    ])
-    career_goal = models.CharField(max_length=50, blank=True, null=True, choices=[
-        ('DevOps Engineer', 'DevOps Engineer'),
-        ('Backend Developer', 'Backend Developer'),
-        ('Data Scientist', 'Data Scientist'),
-    ])
+    preferred_domain = models.CharField(max_length=100, blank=True, null=True)
+    career_goal = models.CharField(max_length=100, blank=True, null=True)
     profile_picture = models.ImageField(upload_to='profiles/', blank=True, null=True)
     bio = models.TextField(blank=True, null=True)
     created_at = models.DateTimeField(auto_now_add=True)

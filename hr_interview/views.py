@@ -39,12 +39,117 @@ DEFAULT_HR_QUESTIONS = [
 
 @login_required
 def hr_home_view(request):
-    # Seed default HR questions if table is empty
-    if not HRQuestion.objects.exists():
-        for q_data in DEFAULT_HR_QUESTIONS:
-            HRQuestion.objects.create(**q_data)
+    from resume_analyzer.models import ResumeAnalysis
+    analysis = ResumeAnalysis.objects.filter(user=request.user).first()
 
-    questions = HRQuestion.objects.all()
+    if analysis:
+        # User has uploaded a resume, get or generate custom questions
+        questions = HRQuestion.objects.filter(user=request.user)
+        if not questions.exists():
+            api_key = os.environ.get('GEMINI_API_KEY') or getattr(settings, 'GEMINI_API_KEY', '')
+            generated_list = []
+            
+            career_goal = request.user.profile.career_goal or "Professional"
+            preferred_domain = request.user.profile.preferred_domain or "General"
+            skills = list(analysis.skills.values_list('name', flat=True))
+            skills_str = ", ".join(skills)
+
+            if api_key:
+                try:
+                    url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-flash-latest:generateContent?key={api_key}"
+                    prompt = (
+                        f"You are an expert interviewer. Generate exactly 5 personalized interview questions for a candidate with the following resume profile:\n"
+                        f"- Name: {analysis.name}\n"
+                        f"- Career Goal: {career_goal}\n"
+                        f"- Preferred Domain: {preferred_domain}\n"
+                        f"- Skills: {skills}\n"
+                        f"- Education: {analysis.education}\n"
+                        f"- Certifications: {analysis.certifications}\n\n"
+                        f"The questions must be highly tailored to their specific background, field (whether it is B.Tech, MBA, Law, B.Com, Arts, or any other field), and skills. "
+                        f"Include a mix of behavioral questions (e.g., about their projects, education or case studies) and conceptual/technical questions relevant to their field. "
+                        f"For each question, provide 4-6 key phrases/keywords that a good answer should contain, and a detailed explanation of what the interviewer is looking for in a perfect response.\n\n"
+                        f"Return your response strictly as a JSON array where each object has these keys:\n"
+                        f"- 'text': The question text (string)\n"
+                        f"- 'key_phrases': Comma-separated keywords/phrases to search for (string)\n"
+                        f"- 'explanation': Tips and best practices on how to answer the question (string)\n\n"
+                        f"Return ONLY the raw JSON array, without any markdown formatting or backticks."
+                    )
+                    data = {
+                        "contents": [{
+                            "parts": [{
+                                "text": prompt
+                            }]
+                        }]
+                    }
+                    req = urllib.request.Request(
+                        url,
+                        data=json.dumps(data).encode('utf-8'),
+                        headers={
+                            'Content-Type': 'application/json',
+                            'x-goog-api-key': api_key
+                        },
+                        method='POST'
+                    )
+                    with urllib.request.urlopen(req, timeout=20) as response:
+                        res_data = json.loads(response.read().decode('utf-8'))
+                        text_response = res_data['candidates'][0]['content']['parts'][0]['text'].strip()
+                        
+                        if text_response.startswith("```"):
+                            lines = text_response.splitlines()
+                            if lines[0].startswith("```"):
+                                lines = lines[1:]
+                            if lines and lines[-1].startswith("```"):
+                                lines = lines[:-1]
+                            text_response = "\n".join(lines).strip()
+                        
+                        generated_list = json.loads(text_response)
+                except Exception as e:
+                    print(f"Gemini Custom HR Interview Questions Generation failed: {str(e)}")
+
+            if not generated_list:
+                # Fallback to local templates
+                fallback_skills = skills_str if skills_str else "your background and achievements"
+                generated_list = [
+                    {
+                        'text': f'Tell me about your background and how your skills in {fallback_skills[:100]} prepare you for a role as a {career_goal}.',
+                        'key_phrases': 'experience, skills, goal, background, learn',
+                        'explanation': f'Walk through your education and how your skills align directly with the role of a {career_goal}.'
+                    },
+                    {
+                        'text': f'Describe a major project or academic achievement where you applied {skills[0] if skills else "your domain knowledge"}. What was the outcome?',
+                        'key_phrases': 'project, achievement, applied, outcome, challenge',
+                        'explanation': 'Use the STAR method to describe the task, action you took, and final result.'
+                    },
+                    {
+                        'text': f'Why are you interested in pursuing a career as a {career_goal}, and where do you see yourself in 3 years?',
+                        'key_phrases': 'future, career, interest, learn, grow',
+                        'explanation': 'Show your passion for the domain and how you plan to gain expertise and contribute to the field.'
+                    },
+                    {
+                        'text': f'How do you handle working in a team or collaborating with others to solve a complex problem?',
+                        'key_phrases': 'team, collaborate, communication, solution, solve',
+                        'explanation': 'Give an example of a time you resolved a conflict or worked closely with teammates to deliver a project.'
+                    }
+                ]
+
+            for q_data in generated_list:
+                HRQuestion.objects.create(
+                    user=request.user,
+                    text=q_data.get('text', 'Interview Question'),
+                    key_phrases=q_data.get('key_phrases', 'skills, experience'),
+                    explanation=q_data.get('explanation', 'Explain your thoughts clearly.')
+                )
+            
+            questions = HRQuestion.objects.filter(user=request.user)
+
+    else:
+        # Fallback to general HR questions if no resume uploaded
+        questions = HRQuestion.objects.filter(user=None)
+        if not questions.exists():
+            for q_data in DEFAULT_HR_QUESTIONS:
+                HRQuestion.objects.create(user=None, **q_data)
+            questions = HRQuestion.objects.filter(user=None)
+
     user_attempts = HRAttempt.objects.filter(user=request.user)
     completed_q_ids = set(user_attempts.values_list('question_id', flat=True))
 

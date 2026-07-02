@@ -56,6 +56,14 @@ def resume_upload_view(request):
         analysis.extracted_by = parsed.get('extracted_by', 'Code')
         analysis.save()
 
+        # Update User Profile with primary domain & career goal from the resume
+        profile = request.user.profile
+        if parsed.get('primary_domain'):
+            profile.preferred_domain = parsed['primary_domain']
+        if parsed.get('career_goal'):
+            profile.career_goal = parsed['career_goal']
+        profile.save()
+
         # Update parsed skills ManyToMany
         analysis.skills.clear()
         for skill_name in parsed['skills']:
@@ -63,6 +71,16 @@ def resume_upload_view(request):
             if s_name:
                 skill_obj, _ = Skill.objects.get_or_create(name=s_name[:50])
                 analysis.skills.add(skill_obj)
+        
+        # Clear old custom HR questions, attempts, and roadmaps so they are regenerated based on the new resume
+        from hr_interview.models import HRQuestion, HRAttempt
+        from roadmap.models import RoadmapProgress
+        HRQuestion.objects.filter(user=request.user).delete()
+        HRAttempt.objects.filter(user=request.user).delete()
+        RoadmapProgress.objects.filter(user=request.user).delete()
+        
+        if 'selected_quiz_skills' in request.session:
+            del request.session['selected_quiz_skills']
         
         messages.success(request, "Resume parsed and analyzed successfully!")
         return redirect('resume_result')

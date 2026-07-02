@@ -60,10 +60,16 @@ RECOMMENDATION_RESOURCES = {
 def recommendation_view(request):
     quiz_attempts = QuizAttempt.objects.filter(user=request.user)
     
-    # Calculate average score per domain
-    categories = ['Python', 'DBMS', 'Operating System', 'Computer Networks', 'DevOps', 'SQL', 'Machine Learning']
-    domain_scores = {}
+    # Dynamically build categories list based on user's resume skills and attempted domains
+    from resume_analyzer.models import ResumeAnalysis
+    analysis = ResumeAnalysis.objects.filter(user=request.user).first()
+    detected_skills = list(analysis.skills.values_list('name', flat=True)) if analysis else []
+    attempted_domains = list(quiz_attempts.values_list('domain', flat=True).distinct())
     
+    default_categories = ['Python', 'DBMS', 'Operating System', 'Computer Networks', 'DevOps', 'SQL', 'Machine Learning']
+    categories = list(set(default_categories + attempted_domains + detected_skills))
+    
+    domain_scores = {}
     for cat in categories:
         cat_avg = quiz_attempts.filter(domain=cat).aggregate(Avg('score'))['score__avg']
         if cat_avg is not None:
@@ -145,6 +151,17 @@ def recommendation_view(request):
                         'pdf_url': resource['pdf_url'],
                         'video_title': resource['video_title'],
                         'video_url': resource['video_url']
+                    })
+                else:
+                    import urllib.parse
+                    recommendations.append({
+                        'domain': cat,
+                        'score': score,
+                        'topics': [f'Foundations of {cat}', f'Advanced concepts in {cat}', f'Best practices and common workflows for {cat}'],
+                        'pdf_title': f'Official {cat} Documentation & Guide',
+                        'pdf_url': 'https://www.google.com/search?q=' + urllib.parse.quote(f"{cat} official documentation"),
+                        'video_title': f'{cat} Tutorial for Beginners (YouTube)',
+                        'video_url': 'https://www.youtube.com/results?search_query=' + urllib.parse.quote(f"{cat} tutorial")
                     })
 
     return render(request, 'recommendation/display.html', {

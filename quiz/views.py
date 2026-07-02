@@ -12,10 +12,17 @@ def quiz_home_view(request):
     has_resume = analysis is not None
     detected_skills = list(analysis.skills.values_list('name', flat=True)) if has_resume else []
     
+    # Dynamically compile domains: start with defaults, and add user's skills!
+    default_domains = [choice[0] for choice in Question.DOMAIN_CHOICES]
+    domains = list(default_domains)
+    for skill in detected_skills:
+        if skill not in domains:
+            domains.append(skill)
+
     context = {
         'has_resume': has_resume,
         'detected_skills': detected_skills,
-        'domains': [choice[0] for choice in Question.DOMAIN_CHOICES],
+        'domains': domains,
         'difficulties': [choice[0] for choice in Question.DIFFICULTY_CHOICES],
     }
     return render(request, 'quiz/home.html', context)
@@ -51,41 +58,114 @@ def generate_personalized_quiz_view(request):
         messages.warning(request, "Please upload a resume or select skills manually first.")
         return redirect('manual_skill_select')
 
-    # Query questions that match the skills/domains
-    # Map typical resume skills to quiz domains
-    domain_mapping = {
-        'Python': 'Python',
-        'Django': 'Python',
-        'MySQL': 'SQL',
-        'Docker': 'DevOps',
-        'AWS': 'DevOps',
-        'Jenkins': 'DevOps',
-        'Linux': 'Operating System',
-        'Terraform': 'DevOps',
-        'Kubernetes': 'DevOps',
-        'SQL': 'SQL',
-        'Machine Learning': 'Machine Learning',
-        'Data Science': 'Machine Learning',
-    }
+    # Try to generate personalized quiz questions via Gemini first
+    import os
+    import urllib.request
+    import json
+    from django.conf import settings
 
-    target_domains = set()
-    for skill in skills:
-        mapped = domain_mapping.get(skill)
-        if mapped:
-            target_domains.add(mapped)
-        elif Question.objects.filter(domain=skill).exists():
-            target_domains.add(skill)
+    api_key = os.environ.get('GEMINI_API_KEY') or getattr(settings, 'GEMINI_API_KEY', '')
+    questions = None
 
-    if not target_domains:
-        # Fallback to random if no exact matches
-        target_domains = ['Python', 'SQL', 'DevOps']
+    if api_key:
+        try:
+            url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-flash-latest:generateContent?key={api_key}"
+            prompt = (
+                f"Generate exactly 10 multiple-choice questions for a candidate who has these skills: {skills}.\n"
+                f"The questions should be relevant to these skills and professional domain. For each question, provide 4 options, a correct answer, and an explanation.\n\n"
+                f"Return your response strictly as a JSON array where each object has these keys:\n"
+                f"- 'domain': The specific skill or domain the question belongs to (string, must be one of: {skills})\n"
+                f"- 'difficulty': Difficulty level (must be one of: 'Easy', 'Medium', 'Hard')\n"
+                f"- 'text': The question text (string)\n"
+                f"- 'option_a': Option A (string)\n"
+                f"- 'option_b': Option B (string)\n"
+                f"- 'option_c': Option C (string)\n"
+                f"- 'option_d': Option D (string)\n"
+                f"- 'correct_option': The correct option letter (must be one of: 'A', 'B', 'C', 'D')\n"
+                f"- 'explanation': Explanation of the correct option (string)\n\n"
+                f"Return ONLY the raw JSON array, without any markdown formatting or backticks."
+            )
+            data = {
+                "contents": [{
+                    "parts": [{
+                        "text": prompt
+                    }]
+                }]
+            }
+            req = urllib.request.Request(
+                url,
+                data=json.dumps(data).encode('utf-8'),
+                headers={
+                    'Content-Type': 'application/json',
+                    'x-goog-api-key': api_key
+                },
+                method='POST'
+            )
+            with urllib.request.urlopen(req, timeout=20) as response:
+                res_data = json.loads(response.read().decode('utf-8'))
+                text_response = res_data['candidates'][0]['content']['parts'][0]['text'].strip()
+                
+                if text_response.startswith("```"):
+                    lines = text_response.splitlines()
+                    if lines[0].startswith("```"):
+                        lines = lines[1:]
+                    if lines and lines[-1].startswith("```"):
+                        lines = lines[:-1]
+                    text_response = "\n".join(lines).strip()
+                
+                generated_questions = json.loads(text_response)
+                created_qs = []
+                for q_data in generated_questions:
+                    q_obj = Question.objects.create(
+                        domain=q_data.get('domain', 'Personalized'),
+                        difficulty=q_data.get('difficulty', 'Medium'),
+                        text=q_data.get('text'),
+                        option_a=q_data.get('option_a'),
+                        option_b=q_data.get('option_b'),
+                        option_c=q_data.get('option_c'),
+                        option_d=q_data.get('option_d'),
+                        correct_option=q_data.get('correct_option', 'A'),
+                        explanation=q_data.get('explanation', '')
+                    )
+                    created_qs.append(q_obj)
+                if created_qs:
+                    questions = Question.objects.filter(id__in=[q.id for q in created_qs])
+        except Exception as e:
+            print(f"Gemini Personalized Quiz Generation failed: {str(e)}")
 
-    # Get 10 random questions across target domains
-    questions = Question.objects.filter(domain__in=target_domains).order_by('?')[:10]
-    
-    if not questions.exists():
-        # absolute fallback
-        questions = Question.objects.all().order_by('?')[:10]
+    if not questions or not questions.exists():
+        # Fallback to local DB query mapping
+        domain_mapping = {
+            'Python': 'Python',
+            'Django': 'Python',
+            'MySQL': 'SQL',
+            'Docker': 'DevOps',
+            'AWS': 'DevOps',
+            'Jenkins': 'DevOps',
+            'Linux': 'Operating System',
+            'Terraform': 'DevOps',
+            'Kubernetes': 'DevOps',
+            'SQL': 'SQL',
+            'Machine Learning': 'Machine Learning',
+            'Data Science': 'Machine Learning',
+        }
+
+        target_domains = set()
+        for skill in skills:
+            mapped = domain_mapping.get(skill)
+            if mapped:
+                target_domains.add(mapped)
+            elif Question.objects.filter(domain=skill).exists():
+                target_domains.add(skill)
+
+        if not target_domains:
+            target_domains = ['Python', 'SQL', 'DevOps']
+
+        # Get 10 random questions across target domains
+        questions = Question.objects.filter(domain__in=target_domains).order_by('?')[:10]
+        
+        if not questions.exists():
+            questions = Question.objects.all().order_by('?')[:10]
 
     request.session['quiz_questions_ids'] = [q.id for q in questions]
     request.session['quiz_domain'] = "Personalized (Resume/Skills)"
@@ -105,9 +185,83 @@ def start_quiz_session_view(request):
         if not questions.exists():
             # Try setting back to any difficulty as fallback
             questions = Question.objects.filter(domain=domain).order_by('?')[:count]
-            if not questions.exists():
-                messages.error(request, f"No questions found for domain: {domain}.")
-                return redirect('quiz_home')
+            
+        if not questions.exists():
+            # Let's generate questions dynamically using Gemini!
+            import os
+            import urllib.request
+            import json
+            from django.conf import settings
+
+            api_key = os.environ.get('GEMINI_API_KEY') or getattr(settings, 'GEMINI_API_KEY', '')
+            if api_key:
+                try:
+                    url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-flash-latest:generateContent?key={api_key}"
+                    prompt = (
+                        f"Generate exactly {count} multiple-choice questions for the domain/skill: '{domain}'.\n"
+                        f"Difficulty level should be: '{difficulty}'. Each question must have 4 options, a correct answer, and an explanation.\n\n"
+                        f"Return your response strictly as a JSON array where each object has these keys:\n"
+                        f"- 'difficulty': Difficulty level (must be '{difficulty}')\n"
+                        f"- 'text': The question text (string)\n"
+                        f"- 'option_a': Option A (string)\n"
+                        f"- 'option_b': Option B (string)\n"
+                        f"- 'option_c': Option C (string)\n"
+                        f"- 'option_d': Option D (string)\n"
+                        f"- 'correct_option': The correct option letter (must be one of: 'A', 'B', 'C', 'D')\n"
+                        f"- 'explanation': Explanation of the correct option (string)\n\n"
+                        f"Return ONLY the raw JSON array, without any markdown formatting or backticks."
+                    )
+                    data = {
+                        "contents": [{
+                            "parts": [{
+                                "text": prompt
+                            }]
+                        }]
+                    }
+                    req = urllib.request.Request(
+                        url,
+                        data=json.dumps(data).encode('utf-8'),
+                        headers={
+                            'Content-Type': 'application/json',
+                            'x-goog-api-key': api_key
+                        },
+                        method='POST'
+                    )
+                    with urllib.request.urlopen(req, timeout=20) as response:
+                        res_data = json.loads(response.read().decode('utf-8'))
+                        text_response = res_data['candidates'][0]['content']['parts'][0]['text'].strip()
+                        
+                        if text_response.startswith("```"):
+                            lines = text_response.splitlines()
+                            if lines[0].startswith("```"):
+                                lines = lines[1:]
+                            if lines and lines[-1].startswith("```"):
+                                lines = lines[:-1]
+                            text_response = "\n".join(lines).strip()
+                        
+                        generated_questions = json.loads(text_response)
+                        created_qs = []
+                        for q_data in generated_questions:
+                            q_obj = Question.objects.create(
+                                domain=domain,
+                                difficulty=q_data.get('difficulty', difficulty),
+                                text=q_data.get('text'),
+                                option_a=q_data.get('option_a'),
+                                option_b=q_data.get('option_b'),
+                                option_c=q_data.get('option_c'),
+                                option_d=q_data.get('option_d'),
+                                correct_option=q_data.get('correct_option', 'A'),
+                                explanation=q_data.get('explanation', '')
+                            )
+                            created_qs.append(q_obj)
+                        if created_qs:
+                            questions = Question.objects.filter(id__in=[q.id for q in created_qs])
+                except Exception as e:
+                    print(f"Gemini Quiz Generation failed: {str(e)}")
+
+        if not questions.exists():
+            messages.error(request, f"No questions found for domain: {domain} and failed to generate via AI.")
+            return redirect('quiz_home')
         
         request.session['quiz_questions_ids'] = [q.id for q in questions]
         request.session['quiz_domain'] = domain

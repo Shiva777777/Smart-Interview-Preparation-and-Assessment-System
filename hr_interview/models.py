@@ -2,12 +2,10 @@ from django.db import models
 from django.contrib.auth.models import User
 
 class HRQuestion(models.Model):
+    user = models.ForeignKey(User, on_delete=models.CASCADE, null=True, blank=True, related_name='custom_hr_questions')
     text = models.TextField()
     key_phrases = models.TextField(help_text="Comma-separated keywords/phrases to look for in the candidate's answer.")
     explanation = models.TextField(help_text="Best practices/tips on how to frame the response.")
-
-    def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs)
 
     def __str__(self):
         return self.text[:50] + "..."

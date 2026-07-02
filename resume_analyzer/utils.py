@@ -57,7 +57,9 @@ def parse_resume_text(text, master_skills, api_key=None):
                 f"- 'phone': The candidate's phone number (string)\n"
                 f"- 'education': A summary of candidate's education history (string, bulleted or formatted)\n"
                 f"- 'certifications': A summary of candidate's certifications (string, bulleted or formatted)\n"
-                f"- 'skills': A list of technical skills found in the resume (list of strings). Extract all technical skills mentioned in the resume (e.g. AutoCAD, STAAD.Pro, ETABS, MS Excel, Surveying, Estimation, RCC Design, Quantity Surveying, Python, Django, etc.). Do not limit yourself, extract all matching technical skills.\n\n"
+                f"- 'skills': A list of professional skills, domain competencies, tools, or methodologies found in the resume (list of strings). For example: AutoCAD, Surveying, RCC Design for Civil Engineering; Financial Modeling, Marketing Strategy, Operations Management for MBA; Contract Drafting, Legal Research, Corporate Law for Law; Auditing, Taxation, Tally, Bookkeeping for B.Com; Python, Django, Docker for IT, etc. Extract all relevant professional skills and do not limit yourself.\n"
+                f"- 'primary_domain': The main professional field/domain of the candidate based on their skills and experience (e.g., 'Civil Engineering', 'DevOps Engineering', 'Backend Development', 'Business Administration', 'Legal Practice', 'Accounting & Finance', etc.) (string)\n"
+                f"- 'career_goal': A suitable career goal/role for this candidate (e.g., 'Civil Engineer', 'DevOps Engineer', 'Backend Developer', 'Management Professional', 'Legal Counsel', 'Financial Analyst', etc.) (string)\n\n"
                 f"Return ONLY the raw JSON object, without any markdown formatting or backticks."
             )
             data = {
@@ -161,6 +163,8 @@ def parse_resume_text(text, master_skills, api_key=None):
                     'education': clean_str_field(parsed_json.get('education')) or "Not clearly identified",
                     'certifications': clean_str_field(parsed_json.get('certifications')) or "Not clearly identified",
                     'skills': cleaned_skills,
+                    'primary_domain': clean_str_field(parsed_json.get('primary_domain')) or "Software Engineering",
+                    'career_goal': clean_str_field(parsed_json.get('career_goal')) or "Software Engineer",
                     'extracted_by': 'AI'
                 }
             else:
@@ -175,6 +179,8 @@ def parse_resume_text(text, master_skills, api_key=None):
         'education': [],
         'certifications': [],
         'skills': [],
+        'primary_domain': 'Software Engineering',
+        'career_goal': 'Software Engineer',
         'extracted_by': 'Code'
     }
 
@@ -246,5 +252,45 @@ def parse_resume_text(text, master_skills, api_key=None):
 
     parsed_data['education'] = "\n".join(sections['education'][:6]) if sections['education'] else "Not clearly identified"
     parsed_data['certifications'] = "\n".join(sections['certifications'][:6]) if sections['certifications'] else "Not clearly identified"
+
+    # Detect domain/goal from skills and text for local fallback parser
+    skills_lower = [s.lower() for s in parsed_data['skills']]
+    text_lower = text.lower()
+    
+    civil_keywords = ['autocad', 'staad', 'etabs', 'surveying', 'estimation', 'rcc', 'quantity surveying', 'site supervision', 'primavera']
+    devops_keywords = ['docker', 'aws', 'jenkins', 'kubernetes', 'terraform', 'ansible', 'ci/cd']
+    ml_keywords = ['machine learning', 'data science', 'nltk', 'scikit-learn', 'tensorflow', 'pytorch', 'pandas', 'numpy']
+    mba_keywords = ['marketing', 'finance', 'operations', 'strategy', 'human resources', 'management', 'business development', 'sales', 'mba']
+    law_keywords = ['law', 'legal', 'contract', 'drafting', 'constitution', 'advocate', 'litigation', 'court', 'corporate law', 'jurisprudence']
+    bcom_keywords = ['accounting', 'audit', 'taxation', 'tally', 'finance', 'gst', 'ledger', 'balance sheet', 'bookkeeping', 'bcom']
+
+    is_civil = any(any(kw in s for kw in civil_keywords) for s in skills_lower) or any(kw in text_lower for kw in civil_keywords)
+    is_devops = any(any(kw in s for kw in devops_keywords) for s in skills_lower) or any(kw in text_lower for kw in devops_keywords)
+    is_ml = any(any(kw in s for kw in ml_keywords) for s in skills_lower) or any(kw in text_lower for kw in ml_keywords)
+    is_mba = any(any(kw in s for kw in mba_keywords) for s in skills_lower) or any(kw in text_lower for kw in mba_keywords)
+    is_law = any(any(kw in s for kw in law_keywords) for s in skills_lower) or any(kw in text_lower for kw in law_keywords)
+    is_bcom = any(any(kw in s for kw in bcom_keywords) for s in skills_lower) or any(kw in text_lower for kw in bcom_keywords)
+
+    if is_civil:
+        parsed_data['primary_domain'] = 'Civil Engineering'
+        parsed_data['career_goal'] = 'Civil Engineer'
+    elif is_devops:
+        parsed_data['primary_domain'] = 'DevOps Engineering'
+        parsed_data['career_goal'] = 'DevOps Engineer'
+    elif is_ml:
+        parsed_data['primary_domain'] = 'Data Science'
+        parsed_data['career_goal'] = 'Data Scientist'
+    elif is_mba:
+        parsed_data['primary_domain'] = 'Business Administration'
+        parsed_data['career_goal'] = 'Management Professional'
+    elif is_law:
+        parsed_data['primary_domain'] = 'Legal Practice'
+        parsed_data['career_goal'] = 'Legal Counsel'
+    elif is_bcom:
+        parsed_data['primary_domain'] = 'Accounting & Finance'
+        parsed_data['career_goal'] = 'Financial Analyst'
+    elif any(kw in ''.join(skills_lower) or kw in text_lower for kw in ['python', 'django', 'mysql', 'sql', 'software']):
+        parsed_data['primary_domain'] = 'Backend Development'
+        parsed_data['career_goal'] = 'Backend Developer'
 
     return parsed_data

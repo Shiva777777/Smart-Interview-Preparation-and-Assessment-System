@@ -1,0 +1,33 @@
+{% extends 'base.html' %}
+
+{% block title %}Coding Round | AI Interview Assistant{% endblock %}
+{% block page_header %}Coding Round{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center">
+    <div class="col-lg-8 text-center py-5">
+        <div class="glass-card-no-hover p-5">
+            <div class="display-1 text-indigo mb-4">
+                <i class="fas fa-laptop-code"></i>
+            </div>
+            <h3 class="text-white fw-bold mb-3">Coding Round Not Applicable</h3>
+            <p class="text-muted fs-5 mb-4">
+                Based on your uploaded resume, your career goal is <strong>{{ career_goal }}</strong> ({{ domain }} domain).
+                Coding challenges are tailored specifically for technical Software/IT roles.
+            </p>
+            <div class="alert alert-indigo border-0 bg-indigo-subtle text-indigo-emphasis p-4 rounded-3 mb-4 text-start small">
+                <h5 class="fw-bold mb-2"><i class="fas fa-info-circle me-2"></i>Preparation Recommendations:</h5>
+                <ul class="mb-0 ps-3">
+                    <li class="mb-1"><strong>Technical/Domain Quiz</strong>: Go to the Quiz section and try out custom generated conceptual questions for your domain.</li>
+                    <li class="mb-1"><strong>HR Interview</strong>: Go to the HR Interview section to practice real behavioral and domain-specific mock interview questions customized for you.</li>
+                    <li class="mb-0"><strong>Roadmap</strong>: Check out your personalized learning roadmap designed for {{ career_goal }}.</li>
+                </ul>
+            </div>
+            <div class="d-flex justify-content-center gap-3">
+                <a href="/quiz/" class="btn btn-primary-custom px-4 py-2.5"><i class="fas fa-tasks me-2"></i>Go to Quiz</a>
+                <a href="/hr/" class="btn btn-secondary-custom px-4 py-2.5"><i class="fas fa-user-tie me-2"></i>Go to HR Interview</a>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

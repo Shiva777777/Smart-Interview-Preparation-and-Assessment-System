@@ -42,12 +42,14 @@
                         <span>Technical Quiz</span>
                     </a>
                 </li>
+                {% if not user.profile.preferred_domain or 'python' in user.profile.preferred_domain|lower or 'django' in user.profile.preferred_domain|lower or 'devops' in user.profile.preferred_domain|lower or 'software' in user.profile.preferred_domain|lower or 'data' in user.profile.preferred_domain|lower or 'machine' in user.profile.preferred_domain|lower or 'backend' in user.profile.preferred_domain|lower or 'frontend' in user.profile.preferred_domain|lower or 'web' in user.profile.preferred_domain|lower or 'it' in user.profile.preferred_domain|lower or 'computer' in user.profile.preferred_domain|lower or 'coder' in user.profile.preferred_domain|lower or 'developer' in user.profile.preferred_domain|lower or 'programmer' in user.profile.preferred_domain|lower or 'coding' in user.profile.preferred_domain|lower or 'tech' in user.profile.preferred_domain|lower %}
                 <li>
                     <a href="/coding/" class="nav-link-custom">
                         <i class="fas fa-code"></i>
                         <span>Coding Round</span>
                     </a>
                 </li>
+                {% endif %}
                 <li>
                     <a href="/hr/" class="nav-link-custom">
                         <i class="fas fa-user-tie"></i>
